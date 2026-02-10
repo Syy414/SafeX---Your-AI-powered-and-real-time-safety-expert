@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "915562203130",
+    "project_id": "safex-a74f4",
+    "storage_bucket": "safex-a74f4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:915562203130:android:5d3f4d83ce735d3133c643",
+        "android_client_info": {
+          "package_name": "com.safex.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBr9g3orIbmfyWwb1ncn-bSHyIrtSs5KsY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
