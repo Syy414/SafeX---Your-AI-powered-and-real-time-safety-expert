@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Public read-only config/intel (app can fetch without login if you want)
+    match /threat_intel/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Aggregated domain reputation (read-only to clients)
+    match /reputation_domains/{domain} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // User reports (allow create only, no edit/delete, requires auth)
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          "url", "domain", "category", "finalAction", "finalRisk", "createdAt"
+        ])
+        && request.resource.data.finalRisk is number
+        && request.resource.data.finalRisk >= 0
+        && request.resource.data.finalRisk <= 100;
+
+      allow read, update, delete: if false;
+    }
+
+    // Default: block everything else from the app
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
