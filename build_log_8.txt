@@ -1,0 +1,18 @@
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file 'C:\Users\Fu Chuin\OneDrive\Desktop\Documents\Kitahack2026\SafeX---Your-AI-powered-and-real-time-safety-expert\app\build.gradle.kts' line: 1
+
+* What went wrong:
+An exception occurred applying plugin request [id: 'org.jetbrains.kotlin.android', version: '2.0.21']
+> Failed to apply plugin 'org.jetbrains.kotlin.android'.
+   > Cannot add extension with name 'kotlin', as there is an extension already registered with that name.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s

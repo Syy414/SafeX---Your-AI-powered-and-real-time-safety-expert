@@ -1,12 +1,16 @@
 package com.safex.app.guardian
 
+import android.app.NotificationManager
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import kotlin.math.min
+import com.safex.app.data.AlertRepository
+import com.safex.app.data.UserPrefs
+import com.safex.app.data.local.SafeXDatabase
+import kotlinx.coroutines.flow.first
 
 class ScanTextWorker(
     appContext: Context,
@@ -14,68 +18,99 @@ class ScanTextWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val prefs = applicationContext.getSharedPreferences("safex_scan", Context.MODE_PRIVATE)
-        val lastScanSeconds = prefs.getLong("last_scan_seconds", 0L)
+        val userPrefs = UserPrefs(applicationContext)
+
+        // 1. Check if gallery monitoring is enabled
+        val isEnabled = userPrefs.galleryMonitoringEnabled.first()
+        if (!isEnabled) {
+            Log.d("SafeX-Gallery", "Gallery monitoring disabled. Skipping.")
+            return Result.success()
+        }
+
+        // 2. Get last scan time (stored in millis, MediaStore uses seconds)
+        val lastScanMillis = userPrefs.lastScanTimestamp.first()
+        val lastScanSeconds = lastScanMillis / 1000
+
+        var scannedCount = 0
+        var newestSeenSeconds = lastScanSeconds
 
         try {
             val projection = arrayOf(
                 MediaStore.Images.Media._ID,
                 MediaStore.Images.Media.DATE_ADDED
             )
-
-            // DATE_ADDED is in seconds
             val selection = "${MediaStore.Images.Media.DATE_ADDED} > ?"
             val selectionArgs = arrayOf(lastScanSeconds.toString())
-
             val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
 
             val resolver = applicationContext.contentResolver
             val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
-            var newestSeen = lastScanSeconds
-            var scannedCount = 0
+            // Reuse existing components
+            val triageEngine = HeuristicTriageEngine() 
+            val database = SafeXDatabase.getInstance(applicationContext)
+            val repository = AlertRepository.getInstance(database)
 
             resolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
                 val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
 
-                // Don’t scan infinite images in one run (keep it safe)
-                val maxToScan = 10
-
-                while (cursor.moveToNext() && scannedCount < maxToScan) {
+                // Max 10 images per run to be safe
+                while (cursor.moveToNext() && scannedCount < 10) {
                     val id = cursor.getLong(idCol)
                     val dateAdded = cursor.getLong(dateCol)
-                    if (dateAdded > newestSeen) newestSeen = dateAdded
+                    
+                    if (dateAdded > newestSeenSeconds) newestSeenSeconds = dateAdded
 
                     val imageUri = ContentUris.withAppendedId(uri, id)
-
-                    val text = GalleryTextExtractor.extractText(applicationContext, imageUri).trim()
                     scannedCount++
 
-                    if (text.isNotBlank()) {
-                        val preview = text.replace("\n", " ")
-                        val shortPreview = preview.substring(0, min(preview.length, 120))
-                        Log.d("SafeX-Gallery", "OCR text: $shortPreview")
-                    } else {
-                        Log.d("SafeX-Gallery", "OCR empty (imageUri=$imageUri)")
+                    // A) OCR Text
+                    val ocrText = GalleryTextExtractor.extractText(applicationContext, imageUri)
+                    
+                    // B) QR Code
+                    val qrValues = GalleryQrExtractor.extractQrValues(applicationContext, imageUri)
+                    val qrText = qrValues.joinToString("\n")
+
+                    val fullText = (ocrText + "\n" + qrText).trim()
+                    if (fullText.isBlank()) continue
+
+                    // C) Triage
+                    val result = triageEngine.analyze(fullText)
+
+                    // D) Alert if HIGH risk
+                    if (result.riskLevel == "HIGH") {
+                        val alertId = repository.createAlert(
+                            type = "gallery",
+                            riskLevel = result.riskLevel,
+                            category = result.category,
+                            tacticsJson = result.tactics.toString(),
+                            snippetRedacted = fullText.take(500),
+                            extractedUrl = if (result.containsUrl) "URL detected" else null,
+                            headline = result.headline
+                        )
+
+                        // E) Notification
+                        SafeXNotificationHelper.postWarning(
+                            applicationContext,
+                            alertId,
+                            result.headline,
+                            result.riskLevel,
+                            "gallery"
+                        )
+                        Log.w("SafeX-Gallery", "High risk alert created: $alertId")
                     }
                 }
             }
 
-            // Update last scan time so we don’t re-scan the same images
-            prefs.edit().putLong("last_scan_seconds", newestSeen).apply()
+            // Update timestamp
+            userPrefs.setLastScanTimestamp(newestSeenSeconds * 1000)
 
-            Log.d("SafeX-Gallery", "Worker done. scanned=$scannedCount lastScan=$newestSeen")
             return Result.success()
 
-        } catch (se: SecurityException) {
-            // This means READ_MEDIA_IMAGES (or old READ_EXTERNAL_STORAGE) is not granted.
-            Log.e("SafeX-Gallery", "No permission to read images. Grant gallery permission.", se)
-            return Result.failure()
-
         } catch (e: Exception) {
-            Log.e("SafeX-Gallery", "Worker error", e)
-            return Result.retry()
+            Log.e("SafeX-Gallery", "Error scanning gallery", e)
+            return Result.failure()
         }
     }
 }

@@ -1,0 +1,31 @@
+Starting a Gradle Daemon, 8 stopped Daemons could not be reused, use --status for details
+
+[Incubating] Problems report is available at: file:///C:/Users/Fu%20Chuin/OneDrive/Desktop/Documents/Kitahack2026/SafeX---Your-AI-powered-and-real-time-safety-expert/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+org.gradle.api.InvalidUserDataException: Invalid TOML catalog definition:
+  - Problem: In version catalog libs, parsing failed with 1 error.
+    
+    Reason: In file 'C:\Users\Fu Chuin\OneDrive\Desktop\Documents\Kitahack2026\SafeX---Your-AI-powered-and-real-time-safety-expert\gradle\libs.versions.toml' at line 38, column 1: kotlin-android previously defined at line 35, column 1.
+    
+    Possible solution: Fix the TOML file according to the syntax described at https://toml.io.
+    
+    For more information, please refer to https://docs.gradle.org/9.1.0/userguide/version_catalog_problems.html#toml_syntax_error in the Gradle documentation.
+> Invalid TOML catalog definition:
+    - Problem: In version catalog libs, parsing failed with 1 error.
+      
+      Reason: In file 'C:\Users\Fu Chuin\OneDrive\Desktop\Documents\Kitahack2026\SafeX---Your-AI-powered-and-real-time-safety-expert\gradle\libs.versions.toml' at line 38, column 1: kotlin-android previously defined at line 35, column 1.
+      
+      Possible solution: Fix the TOML file according to the syntax described at https://toml.io.
+      
+      For more information, please refer to https://docs.gradle.org/9.1.0/userguide/version_catalog_problems.html#toml_syntax_error in the Gradle documentation.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 5s

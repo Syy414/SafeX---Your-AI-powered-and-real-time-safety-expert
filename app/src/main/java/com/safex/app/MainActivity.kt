@@ -39,6 +39,15 @@ import androidx.core.os.LocaleListCompat
 import com.safex.app.data.UserPrefs
 import com.safex.app.ui.theme.SafeXTheme
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,9 +68,15 @@ fun SafeXAppRoot() {
     val prefs = remember { UserPrefs(context) }
     val scope = rememberCoroutineScope()
 
+    // 16. Agent 6: Ensure anonymous auth at startup
+    LaunchedEffect(Unit) {
+        com.safex.app.data.FirebaseAuthHelper.ensureSignedIn()
+    }
+
     val languageTag by prefs.languageTag.collectAsState(initial = "")
     val mode by prefs.mode.collectAsState(initial = "")
     val onboarded by prefs.onboarded.collectAsState(initial = false)
+    var showInsights by remember { mutableStateOf(false) }
 
     // 14A.5 Apply locale whenever language changes
     LaunchedEffect(languageTag) {
@@ -86,7 +101,34 @@ fun SafeXAppRoot() {
             }
         }
     } else {
-        HomeDebugPingScreen()
+        // Interim Tab Navigation for verification
+        var currentTab by remember { mutableStateOf("Home") }
+
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = currentTab == "Home",
+                        onClick = { currentTab = "Home" },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                        label = { Text("Home") }
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == "Insights",
+                        onClick = { currentTab = "Insights" },
+                        icon = { Icon(Icons.Default.Info, contentDescription = "Insights") },
+                        label = { Text("Insights") }
+                    )
+                }
+            }
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                when (currentTab) {
+                    "Home" -> HomeDebugPingScreen()
+                    "Insights" -> com.safex.app.ui.insights.InsightsScreen()
+                }
+            }
+        }
     }
 }
 
@@ -186,24 +228,39 @@ fun HomeDebugPingScreen() {
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                enabled = !loading,
                 onClick = {
-                    loading = true
-                    status = "Calling ping..."
                     scope.launch {
                         try {
-                            val res = BackendFunctions.ping()
-                            status = "OK: $res"
+                            val db = com.safex.app.data.local.SafeXDatabase.getInstance(context)
+                            val dao = db.alertDao()
+                            val id = java.util.UUID.randomUUID().toString()
+                            val entity = com.safex.app.data.local.AlertEntity(
+                                id = id,
+                                createdAt = System.currentTimeMillis(),
+                                type = "NOTIFICATION",
+                                riskLevel = "HIGH",
+                                category = "impersonation",
+                                tacticsJson = "[\"urgency\",\"authority\"]",
+                                snippetRedacted = "Bank Negara: Akaun anda telah dibekukan. Sila hubungi 012-3456789 segera.",
+                                extractedUrl = null,
+                                headline = "Possible authority impersonation detected"
+                            )
+                            dao.insert(entity)
+                            com.safex.app.guardian.SafeXNotificationHelper.postWarningNotification(context, entity)
+                            status = "Sample alert created: $id"
                         } catch (e: Exception) {
-                            status = "ERROR: ${e.message ?: e.toString()}"
-                        } finally {
-                            loading = false
+                            status = "Error creating alert: ${e.message}"
+                            e.printStackTrace()
                         }
                     }
                 }
             ) {
-                Text(if (loading) "Testing..." else "Test Backend (ping)")
+                Text("Create Sample Alert (Debug)")
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+
         }
     }
 }

@@ -32,4 +32,8 @@ object GalleryScanWork {
         val req = OneTimeWorkRequestBuilder<ScanTextWorker>().build()
         WorkManager.getInstance(context).enqueue(req)
     }
+
+    fun stop(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
+    }
 }

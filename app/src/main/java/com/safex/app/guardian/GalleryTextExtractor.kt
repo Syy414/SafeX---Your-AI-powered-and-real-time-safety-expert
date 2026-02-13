@@ -9,9 +9,13 @@ import kotlinx.coroutines.tasks.await
 
 object GalleryTextExtractor {
     suspend fun extractText(context: Context, uri: Uri): String {
-        val image = InputImage.fromFilePath(context, uri)
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        val result = recognizer.process(image).await()
-        return result.text ?: ""
+        return try {
+            val image = InputImage.fromFilePath(context, uri)
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            val result = recognizer.process(image).await()
+            result.text ?: ""
+        } catch (e: Exception) {
+            ""
+        }
     }
 }
