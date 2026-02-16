@@ -47,7 +47,7 @@ class ScanTextWorker(
             val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
             // Reuse existing components
-            val triageEngine = HeuristicTriageEngine() 
+            val triageEngine = HybridTriageEngine(applicationContext) 
             val database = SafeXDatabase.getInstance(applicationContext)
             val repository = AlertRepository.getInstance(database)
 

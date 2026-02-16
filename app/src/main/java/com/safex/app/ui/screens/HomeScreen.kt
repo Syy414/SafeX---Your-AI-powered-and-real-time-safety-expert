@@ -24,6 +24,8 @@ import com.safex.app.ui.theme.SafetyGreen
 import com.safex.app.ui.theme.SafeXBlue
 import com.safex.app.ui.theme.SafeXBlueLight
 import com.safex.app.ui.theme.SurfaceWhite
+import com.safex.app.ui.theme.SafeXBlueDark
+import androidx.compose.ui.graphics.Brush
 
 @Composable
 fun HomeScreen(
@@ -76,7 +78,7 @@ fun HomeScreen(
 
         // Scan Section
         Text(
-            text = "Manual Safety Check",
+            text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.manual_check),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Start)
@@ -87,14 +89,14 @@ fun HomeScreen(
         // Scan Grid
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
              ScanCard(
-                 title = "Camera", 
+                 title = androidx.compose.ui.res.stringResource(com.safex.app.R.string.camera), 
                  icon = Icons.Default.CameraAlt, 
                  modifier = Modifier.weight(1f),
                  onClick = onScanCamera
              )
              Spacer(modifier = Modifier.width(12.dp))
              ScanCard(
-                 title = "Gallery", 
+                 title = androidx.compose.ui.res.stringResource(com.safex.app.R.string.gallery), 
                  icon = Icons.Default.Image, 
                  modifier = Modifier.weight(1f),
                  onClick = onScanImage
@@ -115,14 +117,14 @@ fun HomeScreen(
         ) {
             Icon(Icons.Default.Link, contentDescription = null)
             Spacer(modifier = Modifier.width(12.dp))
-            Text("Check Link Safety")
+            Text(androidx.compose.ui.res.stringResource(com.safex.app.R.string.check_link))
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
         // Active Protections List
         Text(
-            text = "Active Protections",
+            text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.active_protections),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Start)
@@ -130,14 +132,14 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(12.dp))
         
         ProtectionItem(
-            title = "Message Guardian", 
-            subtitle = if (notifEnabled) "Monitoring active" else "Disabled",
+            title = androidx.compose.ui.res.stringResource(com.safex.app.R.string.msg_guardian), 
+            subtitle = if (notifEnabled) androidx.compose.ui.res.stringResource(com.safex.app.R.string.monitoring_active) else androidx.compose.ui.res.stringResource(com.safex.app.R.string.monitoring_disabled),
             enabled = notifEnabled
         )
         Spacer(modifier = Modifier.height(8.dp))
         ProtectionItem(
-            title = "Gallery Guardian", 
-            subtitle = if (galleryEnabled) "Monitoring active" else "Disabled",
+            title = androidx.compose.ui.res.stringResource(com.safex.app.R.string.gal_guardian), 
+            subtitle = if (galleryEnabled) androidx.compose.ui.res.stringResource(com.safex.app.R.string.monitoring_active) else androidx.compose.ui.res.stringResource(com.safex.app.R.string.monitoring_disabled),
             enabled = galleryEnabled
         )
     }
@@ -145,19 +147,35 @@ fun HomeScreen(
 
 @Composable
 fun DashboardCard(isGuardian: Boolean) {
-    val containerColor = if (isGuardian) SafeXBlue else Color.Gray
-    val title = if (isGuardian) "You're protected" else "Guardian Paused"
-    val subtitle = if (isGuardian) "SafeX is monitoring for scams in real time." else "Enable Guardian mode to stay safe."
+    val gradient = if (isGuardian) {
+        Brush.linearGradient(listOf(SafeXBlue, SafeXBlueDark))
+    } else {
+        Brush.linearGradient(listOf(Color.Gray, Color.DarkGray))
+    }
+    
+    val title = if (isGuardian) androidx.compose.ui.res.stringResource(com.safex.app.R.string.status_protected) else androidx.compose.ui.res.stringResource(com.safex.app.R.string.status_paused)
+    val subtitle = if (isGuardian) androidx.compose.ui.res.stringResource(com.safex.app.R.string.desc_protected) else androidx.compose.ui.res.stringResource(com.safex.app.R.string.desc_paused)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(180.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent) // We draw background in Box
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(gradient)
+        ) {
             // Background decoration (optional circles)
+            Box(
+                 modifier = Modifier
+                     .align(Alignment.TopEnd)
+                     .offset(x = 20.dp, y = (-20).dp)
+                     .size(100.dp)
+                     .background(Color.White.copy(alpha = 0.1f), CircleShape)
+            )
             
             Column(
                 modifier = Modifier
@@ -173,7 +191,7 @@ fun DashboardCard(isGuardian: Boolean) {
                     Icon(Icons.Default.Shield, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isGuardian) "SECURE" else "PAUSED",
+                        text = if (isGuardian) androidx.compose.ui.res.stringResource(com.safex.app.R.string.lbl_secure) else androidx.compose.ui.res.stringResource(com.safex.app.R.string.lbl_paused),
                         color = Color.White,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold

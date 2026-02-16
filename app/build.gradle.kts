@@ -10,15 +10,15 @@ android {
     namespace = "com.safex.app"
 
     androidResources {
-        generateLocaleConfig = true
+        generateLocaleConfig = false 
     }
 
-    compileSdk = 36
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.safex.app"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -40,6 +40,12 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
@@ -72,18 +78,20 @@ dependencies {
     implementation("com.google.firebase:firebase-functions")
     implementation("com.google.firebase:firebase-auth")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
-    implementation("com.google.mlkit:text-recognition:16.0.0")
-    implementation("com.google.mlkit:barcode-scanning:17.2.0")
-    implementation("com.google.mlkit:language-id:17.0.5")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("com.google.mlkit:text-recognition:16.0.1") 
+    // CameraX 1.4.1+ provides the 16KB aligned libimage_processing_util_jni.so
+    // which overrides the old one in this library.
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation("com.google.mlkit:language-id:17.0.6")
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
 
     // CameraX (for manual camera scan)
-    implementation("androidx.camera:camera-camera2:1.3.4")
-    implementation("androidx.camera:camera-lifecycle:1.3.4")
-    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.4.1")
+    implementation("androidx.camera:camera-lifecycle:1.4.1")
+    implementation("androidx.camera:camera-view:1.4.1")
 
     // Room
     implementation(libs.androidx.room.runtime)
@@ -93,5 +101,8 @@ dependencies {
     // Navigation & UI
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("androidx.compose.material:material-icons-extended:1.7.6")
+
+    // MediaPipe Tasks (Modern replacement for TFLite Task Lib - supports 16KB pages from v0.10.26+)
+    implementation("com.google.mediapipe:tasks-text:0.10.32")
 }
 

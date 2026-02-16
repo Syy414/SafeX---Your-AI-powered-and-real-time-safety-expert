@@ -30,26 +30,22 @@ class ScanViewModel(private val context: Context) {
     suspend fun scanLink(url: String) {
         _state.value = ScanUiState.Scanning
         try {
-            withContext(Dispatchers.IO) {
-                // TODO: Replace with real Safe Browsing call via CloudFunctionsClient
-                // when Agent 6 ships the checkLink callable.
-                val result = ScanResult(
-                    riskLevel = RiskLevel.UNKNOWN,
-                    headline = "Link check — backend not ready yet",
-                    reasons = listOf(
-                        "🔗 URL submitted: $url",
-                        "⏳ Safe Browsing backend is not deployed yet.",
-                        "Result will be available once the backend is connected."
-                    ),
-                    nextSteps = listOf(
-                        "⚠️ Do not enter passwords or OTP on unfamiliar sites",
-                        "🔍 Check the domain manually on Google Safe Browsing Transparency Report"
-                    ),
-                    extractedUrl = url,
-                    scanType = ScanType.LINK
-                )
-                _state.value = ScanUiState.Result(result)
-            }
+            // Call the new checkLink Cloud Function
+            val response = com.safex.app.data.CloudFunctionsClient.INSTANCE.checkLink(url)
+            
+            val result = ScanResult(
+                riskLevel = RiskLevel.valueOf(response.riskLevel), // Ensure RiskLevel enum matches or map safely
+                headline = response.headline,
+                reasons = response.reasons,
+                nextSteps = if (response.safe) 
+                    listOf("✅ Link appears safe", "Use caution even with safe links") 
+                else 
+                    listOf("⛔ Do not visit this link", "Block the sender if possible"),
+                extractedUrl = url,
+                scanType = ScanType.LINK
+            )
+            _state.value = ScanUiState.Result(result)
+
         } catch (e: Exception) {
             _state.value = ScanUiState.Error(e.message ?: "Link scan failed")
         }
@@ -80,14 +76,41 @@ class ScanViewModel(private val context: Context) {
                     }
                 }
 
-                val triageResult = TextTriageEngine.triage(combinedText, ScanType.IMAGE)
+                // Use Hybrid Engine (Rules + AI)
+                val triageResult = com.safex.app.guardian.HybridTriageEngine(context).analyze(combinedText)
 
-                // Override extractedUrl with QR URL if OCR didn't find one
-                if (triageResult.extractedUrl == null && qrUrls.isNotEmpty()) {
-                    triageResult.copy(extractedUrl = qrUrls.first())
-                } else {
-                    triageResult
+                // 4) Map TriageResult -> ScanResult
+                val finalRiskLevel = try {
+                    RiskLevel.valueOf(triageResult.riskLevel)
+                } catch (_: Exception) {
+                    RiskLevel.UNKNOWN
                 }
+
+                // Determine URL (QR code priority, else Regex find)
+                val finalUrl = if (qrUrls.isNotEmpty()) {
+                    qrUrls.first()
+                } else {
+                    // Simple regex to find URL in text if triage says it has one
+                    if (triageResult.containsUrl) {
+                        Regex("""(https?://[^\s]+|www\.[^\s]+)""", RegexOption.IGNORE_CASE)
+                            .find(combinedText)?.value
+                    } else null
+                }
+
+                ScanResult(
+                    riskLevel = finalRiskLevel,
+                    headline = triageResult.headline,
+                    // tactics are the reasons
+                    reasons = triageResult.tactics.ifEmpty { listOf("Analysis completed") },
+                    nextSteps = when (finalRiskLevel) {
+                        RiskLevel.HIGH -> listOf("Do not trust this content", "Block sender", "Delete immediately")
+                        RiskLevel.MEDIUM -> listOf("Verify source carefully", "Do not click links", "Ask a friend")
+                        else -> listOf("Content appears safe", "Stay vigilant")
+                    },
+                    extractedUrl = finalUrl,
+                    extractedText = combinedText,
+                    scanType = ScanType.IMAGE
+                )
             }
             _state.value = ScanUiState.Result(result)
         } catch (e: Exception) {
@@ -104,8 +127,8 @@ class ScanViewModel(private val context: Context) {
 
     // ── Save result to Alerts (optional) ─────────────────────────────
 
-    suspend fun saveToAlerts(result: ScanResult) {
-        withContext(Dispatchers.IO) {
+    suspend fun saveToAlerts(result: ScanResult): String {
+        return withContext(Dispatchers.IO) {
             alertRepo.createAlert(
                 type = "manual",
                 riskLevel = result.riskLevel.name,

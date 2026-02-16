@@ -112,6 +112,49 @@ class AlertRepository(private val dao: AlertDao) {
         }.timeInMillis
     }
 
+    /**
+     * Generate sample data for testing/demo purposes.
+     * Inserts a mix of High, Medium, and Low risk alerts.
+     */
+    suspend fun generateDemoData() = withContext(Dispatchers.IO) {
+        // 1. High Risk Investment Scam
+        createAlert(
+            type = "SMS",
+            riskLevel = "HIGH",
+            category = "Investment Scam",
+            tacticsJson = "[\"Urgency\", \"Too Good To Be True\", \"Unverified URL\"]",
+            snippetRedacted = "Your account #8821 yielded $5,400 profit! Withdraw NOW at http://bit.ly/fake-invest",
+            headline = "Suspicious Crypto Scheme"
+        )
+        // 2. Medium Risk Delivery Scam
+        createAlert(
+            type = "WhatsApp",
+            riskLevel = "MEDIUM",
+            category = "Phishing",
+            tacticsJson = "[\"Impersonation\", \"Request for Info\"]",
+            snippetRedacted = "PosLaju: Parcel pending delivery. Pay RM5 fee here: http://pos-laju-tax.com",
+            headline = "Fake Delivery Fee Request"
+        )
+        // 3. Low Risk Spam
+        createAlert(
+            type = "SMS",
+            riskLevel = "LOW",
+            category = "Spam",
+            tacticsJson = "[\"Marketing\"]",
+            snippetRedacted = "Get 50% off at ShoeMaster! Valid until Sunday.",
+            headline = "Promotional Spam"
+        )
+         // 4. High Risk Bank Impersonation
+        createAlert(
+            type = "Telegram",
+            riskLevel = "HIGH",
+            category = "Impersonation",
+            tacticsJson = "[\"Fear\", \"Authority\"]",
+            snippetRedacted = "bank_admin: Your Maybank2u is LOCKED due to suspicious activity. Click to unlock.",
+            headline = "Bank Account Lockdown Scam"
+        )
+    }
+
     companion object {
         @Volatile
         private var INSTANCE: AlertRepository? = null

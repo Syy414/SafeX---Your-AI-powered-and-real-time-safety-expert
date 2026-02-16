@@ -15,10 +15,16 @@ import androidx.compose.ui.unit.dp
 import com.safex.app.data.UserPrefs
 import kotlinx.coroutines.launch
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.safex.app.data.AlertRepository
+
 @Composable
-fun SettingsScreen(userPrefs: UserPrefs) {
+fun SettingsScreen(userPrefs: UserPrefs, alertRepository: AlertRepository) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val mode by userPrefs.mode.collectAsState(initial = "Companion")
+    val languageTag by userPrefs.languageTag.collectAsState(initial = "en")
     val notifEnabled by userPrefs.notificationMonitoringEnabled.collectAsState(initial = false)
     val galleryEnabled by userPrefs.galleryMonitoringEnabled.collectAsState(initial = false)
 
@@ -31,7 +37,7 @@ fun SettingsScreen(userPrefs: UserPrefs) {
             .verticalScroll(rememberScrollState())
     ) {
         Text(
-            text = "Settings",
+            text = stringResource(com.safex.app.R.string.settings_title),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -39,19 +45,32 @@ fun SettingsScreen(userPrefs: UserPrefs) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("Protection Mode", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        // --- Language Section ---
+        Text(stringResource(com.safex.app.R.string.language), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        LanguageChoiceRow(
+            selected = if (languageTag.isBlank()) "en" else languageTag,
+            onSelect = { scope.launch { userPrefs.setLanguageTag(it) } }
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(stringResource(com.safex.app.R.string.protection_mode), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
         
         ModeSelectionCard(
-            title = "Guardian Mode (Proactive)",
-            description = "Automatically scans notifications and new images for threats.",
+            title = stringResource(com.safex.app.R.string.mode_guardian_title),
+            description = stringResource(com.safex.app.R.string.mode_guardian_desc),
             selected = isGuardian,
             onClick = { scope.launch { userPrefs.setMode("Guardian") } }
         )
         Spacer(modifier = Modifier.height(8.dp))
         ModeSelectionCard(
-            title = "Companion Mode (Manual)",
-            description = "Only scans when you manually choose to.",
+            title = stringResource(com.safex.app.R.string.mode_companion_title),
+            description = stringResource(com.safex.app.R.string.mode_companion_desc),
             selected = !isGuardian,
             onClick = { scope.launch { userPrefs.setMode("Companion") } }
         )
@@ -61,21 +80,66 @@ fun SettingsScreen(userPrefs: UserPrefs) {
             HorizontalDivider()
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text("Guardian Monitors", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(com.safex.app.R.string.guardian_monitors), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Gallery Permission Launcher
+            val galleryLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+            ) { isGranted ->
+                if (isGranted) scope.launch { userPrefs.setGalleryMonitoring(true) }
+            }
+
             SettingsSwitch(
-                title = "Notification Monitoring",
-                description = "Scan incoming messages for scam patterns.",
+                title = stringResource(com.safex.app.R.string.monitor_notif_title),
+                description = stringResource(com.safex.app.R.string.monitor_notif_desc),
                 checked = notifEnabled,
-                onCheckedChange = { scope.launch { userPrefs.setNotificationMonitoring(it) } }
+                onCheckedChange = {  wantEnabled ->
+                    scope.launch { 
+                        if (wantEnabled) {
+                            val packageName = context.packageName
+                            val flat = android.provider.Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+                            val isGranted = flat != null && flat.contains(packageName)
+                            
+                            if (isGranted) {
+                                userPrefs.setNotificationMonitoring(true)
+                            } else {
+                                android.widget.Toast.makeText(context, "Please grant Notification Access first", android.widget.Toast.LENGTH_LONG).show()
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
+                                // Do not enable pref yet
+                            }
+                        } else {
+                            userPrefs.setNotificationMonitoring(false)
+                        }
+                    }
+                }
             )
             
             SettingsSwitch(
-                title = "Gallery Monitoring",
-                description = "Scan new screenshots and images for threats.",
+                title = stringResource(com.safex.app.R.string.monitor_gallery_title),
+                description = stringResource(com.safex.app.R.string.monitor_gallery_desc),
                 checked = galleryEnabled,
-                onCheckedChange = { scope.launch { userPrefs.setGalleryMonitoring(it) } }
+                onCheckedChange = { wantEnabled ->
+                    if (wantEnabled) {
+                        if (android.os.Build.VERSION.SDK_INT >= 33) {
+                            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                scope.launch { userPrefs.setGalleryMonitoring(true) }
+                            } else {
+                                galleryLauncher.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
+                            }
+                        } else {
+                             if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                scope.launch { userPrefs.setGalleryMonitoring(true) }
+                            } else {
+                                galleryLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                            }
+                        }
+                    } else {
+                         scope.launch { userPrefs.setGalleryMonitoring(false) }
+                    }
+                }
             )
         }
 
@@ -83,8 +147,41 @@ fun SettingsScreen(userPrefs: UserPrefs) {
         HorizontalDivider()
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("About SafeX", style = MaterialTheme.typography.titleMedium)
-        Text("Version 1.0 (KitaHack 2026)", style = MaterialTheme.typography.bodyMedium)
+        // --- Demo / Testing Section ---
+        Text(stringResource(com.safex.app.R.string.testing_title), style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = {
+                  scope.launch {
+                      alertRepository.generateDemoData()
+                      android.widget.Toast.makeText(context, context.getString(com.safex.app.R.string.toast_demo_added), android.widget.Toast.LENGTH_SHORT).show()
+                  }
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(com.safex.app.R.string.btn_demo_data))
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = {
+                  scope.launch {
+                      alertRepository.deleteAllAlerts()
+                      android.widget.Toast.makeText(context, context.getString(com.safex.app.R.string.toast_data_cleared), android.widget.Toast.LENGTH_SHORT).show()
+                  }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(com.safex.app.R.string.btn_reset_data))
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(stringResource(com.safex.app.R.string.about_title), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(com.safex.app.R.string.version_info), style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -138,5 +235,26 @@ fun SettingsSwitch(
             Text(text = description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+@Composable
+fun LanguageChoiceRow(selected: String, onSelect: (String) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        FilterChip(
+            selected = selected == "en",
+            onClick = { onSelect("en") },
+            label = { Text(stringResource(com.safex.app.R.string.language_english)) }
+        )
+        FilterChip(
+            selected = selected == "ms",
+            onClick = { onSelect("ms") },
+            label = { Text(stringResource(com.safex.app.R.string.language_malay)) }
+        )
+        FilterChip(
+            selected = selected == "zh",
+            onClick = { onSelect("zh") },
+            label = { Text(stringResource(com.safex.app.R.string.language_chinese)) }
+        )
     }
 }

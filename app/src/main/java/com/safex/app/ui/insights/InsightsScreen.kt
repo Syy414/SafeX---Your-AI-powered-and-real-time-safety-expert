@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,14 +78,16 @@ fun InsightsScreen() {
 
     // 2. News State (kept local to this screen for MVP simplicity)
     val newsRepo = remember { NewsRepository(context) }
-    var selectedRegion by remember { mutableStateOf("MY") } // Default Malaysia
+    // var selectedRegion by remember { mutableStateOf("ASIA") } // Removed
     var isNewsRefreshing by remember { mutableStateOf(false) }
     var newsError by remember { mutableStateOf<String?>(null) }
-    val newsArticles by newsRepo.observeNews(selectedRegion).collectAsState(initial = emptyList())
+    
+    // observeNews now handles translation automatically based on UserPrefs
+    val newsArticles by newsRepo.observeNews().collectAsState(initial = emptyList())
 
     fun fetchNews(force: Boolean = false) {
         scope.launch {
-            newsRepo.getNews(selectedRegion, force).collect { result ->
+            newsRepo.getNews(force).collect { result ->
                 when (result) {
                     is NewsResult.Loading -> {
                         isNewsRefreshing = true
@@ -103,7 +106,7 @@ fun InsightsScreen() {
         }
     }
 
-    LaunchedEffect(selectedRegion) {
+    LaunchedEffect(Unit) {
         fetchNews()
     }
 
@@ -117,12 +120,7 @@ fun InsightsScreen() {
         PullToRefreshBox(
             isRefreshing = uiState.communityLoading || isNewsRefreshing,
             onRefresh = {
-                // Refresh both community trends and news
                 fetchNews(force = true)
-                // Trigger viewmodel refresh if we added a public method, but for now it loads on init.
-                // Re-creating viewmodel logic to refresh:
-                // ideally ViewModel has a refresh() method.
-                // For MVP, news refresh is the main user action here.
             },
             modifier = Modifier.padding(innerPadding).fillMaxSize()
         ) {
@@ -140,11 +138,9 @@ fun InsightsScreen() {
                 // --- 3. Education ---
                 item { EducationSection() }
 
-                // --- 4. News Section (Header + Chips) ---
+                // --- 4. News Section (Header only) ---
                 item {
                     NewsHeaderSection(
-                        selectedRegion = selectedRegion,
-                        onRegionSelected = { selectedRegion = it },
                         errorMsg = newsError,
                         retry = { fetchNews(true) }
                     )
@@ -157,18 +153,19 @@ fun InsightsScreen() {
                             modifier = Modifier.fillMaxWidth().height(100.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No news available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.news_unavailable), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 } else {
                     items(newsArticles, key = { it.url }) { article ->
                         NewsArticleCard(article) {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.url))
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                // ignore invalid URL
+                            // 1. Mark as read (will remove from list)
+                            scope.launch {
+                                newsRepo.markArticleAsRead(article.url)
                             }
+                            // 2. Open URL
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.url))
+                            context.startActivity(intent)
                         }
                     }
                 }
@@ -183,7 +180,7 @@ fun InsightsScreen() {
 fun PersonalSummarySection(state: InsightsUiState) {
     Column {
         Text(
-            text = "Your Week",
+            text = stringResource(R.string.your_week),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
@@ -197,12 +194,12 @@ fun PersonalSummarySection(state: InsightsUiState) {
             Column(modifier = Modifier.padding(16.dp)) {
                 if (state.personalWeeklyCount == 0) {
                     Text(
-                        "No threats detected this week. Stay safe! 🛡️",
+                        stringResource(R.string.no_threats),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 } else {
                     Text(
-                        text = "SafeX blocked ${state.personalWeeklyCount} potential threats.",
+                        text = stringResource(R.string.blocked_threats_fmt, state.personalWeeklyCount),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -226,7 +223,7 @@ fun PersonalSummarySection(state: InsightsUiState) {
 fun CommunityTrendsSection(state: InsightsUiState) {
     Column {
         Text(
-            text = "Community Trends (This Week)",
+            text = stringResource(R.string.community_trends_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
@@ -244,14 +241,14 @@ fun CommunityTrendsSection(state: InsightsUiState) {
                     }
                 } else if (state.communityError != null) {
                     Text(
-                        text = "Unable to load community data.",
+                        text = stringResource(R.string.community_error),
                         color = MaterialTheme.colorScheme.error
                     )
                 } else if (state.communityWeekly == null) {
-                    Text("No community data yet.", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.community_empty), style = MaterialTheme.typography.bodyMedium)
                 } else {
                     val total = state.communityWeekly.totalReports
-                    Text("Total reported scams: $total", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.total_scams_fmt, total), style = MaterialTheme.typography.labelMedium)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text("Top Categories:", style = MaterialTheme.typography.labelLarge)
@@ -266,9 +263,16 @@ fun CommunityTrendsSection(state: InsightsUiState) {
 
 @Composable
 fun EducationSection() {
+    val tips = listOf(
+        Tip(stringResource(R.string.tip_otp_title), stringResource(R.string.tip_otp_desc)),
+        Tip(stringResource(R.string.tip_slow_title), stringResource(R.string.tip_slow_desc)),
+        Tip(stringResource(R.string.tip_verify_title), stringResource(R.string.tip_verify_desc)),
+        Tip(stringResource(R.string.tip_click_title), stringResource(R.string.tip_click_desc))
+    )
+
     Column {
         Text(
-            text = "Safety Tips",
+            text = stringResource(R.string.safety_tips_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
@@ -287,14 +291,12 @@ fun EducationSection() {
 
 @Composable
 fun NewsHeaderSection(
-    selectedRegion: String,
-    onRegionSelected: (String) -> Unit,
     errorMsg: String?,
     retry: () -> Unit
 ) {
     Column {
         Text(
-            text = "Scam News",
+            text = stringResource(R.string.news_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
@@ -309,35 +311,22 @@ fun NewsHeaderSection(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
         ) {
             Text(
-                text = "News links open in browser. Do not enter passwords/OTP.",
+                text = stringResource(R.string.news_disclaimer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.padding(12.dp)
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = selectedRegion == "MY",
-                onClick = { onRegionSelected("MY") },
-                label = { Text("Malaysia") }
-            )
-            FilterChip(
-                selected = selectedRegion == "GLOBAL",
-                onClick = { onRegionSelected("GLOBAL") },
-                label = { Text("Global") }
-            )
-        }
-
         if (errorMsg != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "Failed to load news.",
+                    text = stringResource(R.string.news_failed),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = retry) { Text("Retry") }
+                TextButton(onClick = retry) { Text(stringResource(R.string.news_retry)) }
             }
         }
     }
@@ -373,15 +362,33 @@ fun NewsArticleCard(article: NewsArticleEntity, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
                 text = article.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            
+            if (!article.summary.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = article.summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(article.domain, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(formatSeenDate(article.seenDate), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = "${article.domain} • ${formatSeenDate(article.seenDate)}",
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                // Optional: Icon indicating external link
+                Icon(
+                    painter = painterResource(id = android.R.drawable.ic_menu_view), // Using system icon or similar
+                    contentDescription = "Read source",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -428,9 +435,3 @@ private fun formatSeenDate(raw: String): String {
 }
 
 data class Tip(val title: String, val content: String)
-val tips = listOf(
-    Tip("No OTP sharing", "Banks will never ask for your OTP over the phone."),
-    Tip("Slow down", "Scammers create urgency to make you panic. Stop and think."),
-    Tip("Verify sender", "Check the actual email address or phone number."),
-    Tip("Don't click", "Links in SMS from unknown numbers are often malicious.")
-)

@@ -48,7 +48,8 @@ enum class ScanPage { MENU, LINK, CAMERA, IMAGE }
  */
 @Composable
 fun ScanScreen(
-    initialPage: ScanPage = ScanPage.MENU
+    initialPage: ScanPage = ScanPage.MENU,
+    onNavigateToAlert: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -92,8 +93,12 @@ fun ScanScreen(
         val st = uiState
         if (st is ScanUiState.Result) {
             scope.launch {
-                viewModel.saveToAlerts(st.result)
-                goBack()
+                val alertId = viewModel.saveToAlerts(st.result)
+                onNavigateToAlert(alertId)
+                // We don't goBack() here because we are navigating away.
+                // When user comes back, they might see the result again or we can reset.
+                // Resetting is probably safer to avoid stale state on back press.
+                viewModel.reset()
             }
         }
     }

@@ -22,4 +22,14 @@ interface NewsArticleDao {
 
     @Query("DELETE FROM news_articles WHERE region = :region")
     suspend fun deleteByRegion(region: String): Int
+
+    // ---- Read History ----
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReadHistory(item: NewsReadHistoryEntity)
+
+    @Query("SELECT url FROM news_read_history")
+    suspend fun getAllReadUrls(): List<String>
+    
+    @Query("DELETE FROM news_articles WHERE url IN (:urls)")
+    suspend fun deleteArticles(urls: List<String>)
 }

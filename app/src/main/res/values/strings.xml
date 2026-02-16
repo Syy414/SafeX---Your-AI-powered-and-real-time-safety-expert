@@ -32,4 +32,83 @@
     <string name="news_error">Failed to load news. Showing cached results.</string>
     <string name="news_open">Open</string>
     <string name="news_loading">Loading news…</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="protection_mode">Protection Mode</string>
+    <string name="mode_guardian_title">Guardian Mode (Proactive)</string>
+    <string name="mode_guardian_desc">Automatically scans notifications and new images for threats.</string>
+    <string name="mode_companion_title">Companion Mode (Manual)</string>
+    <string name="mode_companion_desc">Only scans when you manually choose to.</string>
+    
+    <string name="guardian_monitors">Guardian Monitors</string>
+    <string name="monitor_notif_title">Notification Monitoring</string>
+    <string name="monitor_notif_desc">Scan incoming messages for scam patterns.</string>
+    <string name="monitor_gallery_title">Gallery Monitoring</string>
+    <string name="monitor_gallery_desc">Scan new screenshots and images for threats.</string>
+    
+    <string name="testing_title">Testing &amp; Diagnostics</string>
+    <string name="btn_demo_data">Generate Demo Data (Test Charts)</string>
+    <string name="btn_reset_data">Reset / Clear Data</string>
+    <string name="toast_demo_added">Added demo alerts!</string>
+    <string name="toast_data_cleared">All data cleared.</string>
+    
+    <string name="about_title">About SafeX</string>
+    <string name="version_info">Version 1.0 (KitaHack 2026)</string>
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_alerts">Alerts</string>
+    <string name="nav_insights">Insights</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Home Screen -->
+    <string name="manual_check">Manual Safety Check</string>
+    <string name="check_link">Check Link Safety</string>
+    <string name="active_protections">Active Protections</string>
+    <string name="msg_guardian">Message Guardian</string>
+    <string name="gal_guardian">Gallery Guardian</string>
+    <string name="monitoring_active">Monitoring active</string>
+    <string name="monitoring_disabled">Disabled</string>
+    <string name="status_protected">You\'re protected</string>
+    <string name="status_paused">Guardian Paused</string>
+    <string name="desc_protected">SafeX is monitoring for scams in real time.</string>
+    <string name="desc_paused">Enable Guardian mode to stay safe.</string>
+    <string name="lbl_secure">SECURE</string>
+    <string name="lbl_paused">PAUSED</string>
+    <string name="camera">Camera</string>
+    <string name="gallery">Gallery</string>
+
+    <!-- Alerts Screen -->
+    <string name="activity_history">Activity history</string>
+    <string name="weekly_summary">WEEKLY SUMMARY</string>
+    <string name="threats_blocked">threats blocked successfully</string>
+    <string name="latest_threats">Latest Threats</string>
+    <string name="no_alerts">No alerts found.</string>
+
+    <!-- Insights Tips -->
+    <string name="tip_otp_title">No OTP sharing</string>
+    <string name="tip_otp_desc">Banks will never ask for your OTP over the phone.</string>
+    <string name="tip_slow_title">Slow down</string>
+    <string name="tip_slow_desc">Scammers create urgency to make you panic. Stop and think.</string>
+    <string name="tip_verify_title">Verify sender</string>
+    <string name="tip_verify_desc">Check the actual email address or phone number.</string>
+    <string name="tip_click_title">Don\'t click</string>
+    <string name="tip_click_desc">Links in SMS from unknown numbers are often malicious.</string>
+
+    <string name="select_language">Select Language</string>
+
+    <!-- Insights Screen -->
+    <string name="your_week">Your Week</string>
+    <string name="no_threats">No threats detected this week. Stay safe! 🛡️</string>
+    <string name="blocked_threats_fmt">SafeX blocked %d potential threats.</string>
+    <string name="community_trends_title">Community Trends (This Week)</string>
+    <string name="community_error">Unable to load community data.</string>
+    <string name="community_empty">No community data yet.</string>
+    <string name="total_scams_fmt">Total reported scams: %d</string>
+    <string name="safety_tips_title">Safety Tips</string>
+    <string name="region_asia">Asia</string>
+    <string name="region_global">Global</string>
+    <string name="news_retry">Retry</string>
+    <string name="news_failed">Failed to load news.</string>
+    <string name="news_unavailable">No news available.</string>
 </resources>

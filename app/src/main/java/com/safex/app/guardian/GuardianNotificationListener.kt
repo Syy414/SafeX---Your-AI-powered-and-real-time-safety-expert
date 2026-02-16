@@ -18,17 +18,52 @@ import org.json.JSONArray
 class GuardianNotificationListener : NotificationListenerService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val triageEngine: TriageEngine = HeuristicTriageEngine()
+    // Use Hybrid engine: Rules First -> then AI
+    private val triageEngine: TriageEngine by lazy { 
+        HybridTriageEngine(this) 
+    }
 
     private val dao by lazy { SafeXDatabase.getInstance(this).alertDao() }
     private val prefs by lazy { UserPrefs(this) }
 
+    // ContentObserver to trigger instant scans
+    private val galleryObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
+            super.onChange(selfChange, uri)
+            Log.d(TAG, "Gallery change detected. Triggering instant scan.")
+            GalleryScanWork.runOnceNow(this@GuardianNotificationListener)
+        }
+    }
+
     override fun onListenerConnected() {
         Log.d(TAG, "Notification listener connected")
         SafeXNotificationHelper.createChannel(this)
+
+        // Register observer for instant gallery scanning
+        try {
+            contentResolver.registerContentObserver(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                true,
+                galleryObserver
+            )
+            Log.d(TAG, "Gallery observer registered")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register gallery observer", e)
+        }
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        Log.d(TAG, "Notification listener disconnected")
+        try {
+            contentResolver.unregisterContentObserver(galleryObserver)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to unregister gallery observer", e)
+        }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        // ... (rest of the method remains valid, checking bounds)
         // Skip our own notifications to avoid feedback loop
         if (sbn.packageName == packageName) return
 

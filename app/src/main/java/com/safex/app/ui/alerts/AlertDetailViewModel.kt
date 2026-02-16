@@ -68,11 +68,10 @@ class AlertDetailViewModel(
 
         viewModelScope.launch {
             // 1. Send report
-            // We use the category from the *explanation* (Gemini refined) or the local alert?
-            // PRD says explainAlert returns structured data. We'll use local alert + explanation info.
+            // We use the category from the *explanation* (Gemini refined)
             functionsClient.reportAlert(
                 ReportAlertRequest(
-                    category = state.alert.category,
+                    category = state.explanation.category,
                     tactics = state.explanation.whyFlagged // Use whyFlagged as proxy for tactics in report
                 )
             )

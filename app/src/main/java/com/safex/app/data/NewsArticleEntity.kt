@@ -1,5 +1,6 @@
 package com.safex.app.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -8,9 +9,10 @@ data class NewsArticleEntity(
     @PrimaryKey
     val url: String,
     val title: String,
-    val domain: String,
-    val imageUrl: String?,
-    val seenDate: String,      // GDELT seendate string e.g. "20260213T103000Z"
-    val region: String,        // "MY" | "GLOBAL"
-    val cachedAt: Long         // epoch millis when we cached this
+    @ColumnInfo(name = "domain") val domain: String? = null,
+    @ColumnInfo(name = "imageUrl") val imageUrl: String? = null,
+    @ColumnInfo(name = "seenDate") val seenDate: String,
+    @ColumnInfo(name = "region") val region: String,
+    @ColumnInfo(name = "cachedAt") val cachedAt: Long,
+    @ColumnInfo(name = "summary") val summary: String? = null
 )

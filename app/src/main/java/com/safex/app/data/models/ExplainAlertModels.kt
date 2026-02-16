@@ -29,6 +29,7 @@ data class ExplainAlertRequest(
  * Schema matches the Gemini JSON output defined in functions/src/index.ts L112-120.
  */
 data class ExplainAlertResponse(
+    val category: String,
     val riskLevel: String,
     val headline: String,
     val whyFlagged: List<String>,
@@ -41,6 +42,7 @@ data class ExplainAlertResponse(
         /** Parse the raw Map returned by the callable into a typed response. */
         @Suppress("UNCHECKED_CAST")
         fun fromMap(map: Map<String, Any?>): ExplainAlertResponse = ExplainAlertResponse(
+            category = (map["category"] as? String) ?: "Unknown",
             riskLevel = (map["riskLevel"] as? String) ?: "MEDIUM",
             headline = (map["headline"] as? String) ?: "Suspicious activity detected",
             whyFlagged = (map["whyFlagged"] as? List<*>)?.mapNotNull { it?.toString() }
@@ -55,6 +57,7 @@ data class ExplainAlertResponse(
 
         /** Fallback when the function call fails entirely. */
         val FALLBACK = ExplainAlertResponse(
+            category = "Unknown",
             riskLevel = "MEDIUM",
             headline = "Suspicious message detected",
             whyFlagged = listOf("Message matched known scam manipulation patterns."),

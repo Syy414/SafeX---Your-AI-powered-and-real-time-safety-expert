@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">SafeX</string>
-    <string name="tab_home">Laman Utama</string>
+    <string name="tab_home">Utama</string>
     <string name="tab_alerts">Amaran</string>
     <string name="tab_insights">Wawasan</string>
     <string name="tab_settings">Tetapan</string>
@@ -11,7 +11,7 @@
     <string name="scan_qr">Imbas QR</string>
 
     <string name="report">Lapor</string>
-    <string name="mark_safe">Tandakan Selamat</string>
+    <string name="mark_safe">Tanda Selamat</string>
 
     <string name="language">Bahasa</string>
     <string name="language_english">English</string>
@@ -19,12 +19,96 @@
     <string name="language_chinese">中文</string>
 
     <string name="mode">Mod</string>
-    <string name="mode_guardian">Penjaga</string>
-    <string name="mode_companion">Teman</string>
+    <string name="mode_guardian">Pengawal</string>
+    <string name="mode_companion">Penemani</string>
 
-    <string name="news_title">Berita Scam</string>
-    <string name="news_disclaimer">Pautan berita dibuka dalam pelayar. Jangan masukkan kata laluan/OTP.</string>
+    <string name="refresh">Muat Semula</string>
+
+    <string name="news_title">Berita Penipuan</string>
+    <string name="news_disclaimer">Pautan berita dibuka dalam pelayar anda. Jangan masukkan kata laluan/OTP.</string>
     <string name="news_malaysia">Malaysia</string>
     <string name="news_global">Global</string>
-    <string name="refresh">Muat Semula</string>
+    <string name="news_empty">Tiada berita ditemui. Tarik untuk muat semula.</string>
+    <string name="news_error">Gagal memuatkan berita. Menunjukkan hasil cache.</string>
+    <string name="news_open">Buka</string>
+    <string name="news_loading">Memuatkan berita…</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Tetapan</string>
+    <string name="protection_mode">Mod Perlindungan</string>
+    <string name="mode_guardian_title">Mod Pengawal (Proaktif)</string>
+    <string name="mode_guardian_desc">Mengimbas notifikasi dan imej baharu secara automatik untuk ancaman.</string>
+    <string name="mode_companion_title">Mod Penemani (Manual)</string>
+    <string name="mode_companion_desc">Hanya mengimbas apabila anda memilih secara manual.</string>
+    
+    <string name="guardian_monitors">Pemantau Pengawal</string>
+    <string name="monitor_notif_title">Pemantauan Notifikasi</string>
+    <string name="monitor_notif_desc">Imbas mesej masuk untuk corak penipuan.</string>
+    <string name="monitor_gallery_title">Pemantauan Galeri</string>
+    <string name="monitor_gallery_desc">Imbas tangkapan skrin dan imej baharu untuk ancaman.</string>
+    
+    <string name="testing_title">Pengujian &amp; Diagnostik</string>
+    <string name="btn_demo_data">Jana Data Demo</string>
+    <string name="btn_reset_data">Tetap Semula / Kosongkan Data</string>
+    <string name="toast_demo_added">Amaran demo ditambah!</string>
+    <string name="toast_data_cleared">Semua data dikosongkan.</string>
+    
+    <string name="about_title">Tentang SafeX</string>
+    <string name="version_info">Versi 1.0 (KitaHack 2026)</string>
+    <!-- Navigation -->
+    <string name="nav_home">Utama</string>
+    <string name="nav_alerts">Amaran</string>
+    <string name="nav_insights">Wawasan</string>
+    <string name="nav_settings">Tetapan</string>
+
+    <!-- Home Screen -->
+    <string name="manual_check">Pemeriksaan Keselamatan Manual</string>
+    <string name="check_link">Periksa Keselamatan Pautan</string>
+    <string name="active_protections">Perlindungan Aktif</string>
+    <string name="msg_guardian">Pengawal Mesej</string>
+    <string name="gal_guardian">Pengawal Galeri</string>
+    <string name="monitoring_active">Pemantauan aktif</string>
+    <string name="monitoring_disabled">Dinyahaktifkan</string>
+    <string name="status_protected">Anda dilindungi</string>
+    <string name="status_paused">Pengawal Dijeda</string>
+    <string name="desc_protected">SafeX sedang memantau penipuan dalam masa nyata.</string>
+    <string name="desc_paused">Aktifkan mod Pengawal untuk kekal selamat.</string>
+    <string name="lbl_secure">SELAMAT</string>
+    <string name="lbl_paused">DIJEDA</string>
+    <string name="camera">Kamera</string>
+    <string name="gallery">Galeri</string>
+
+    <!-- Alerts Screen -->
+    <string name="activity_history">Sejarah aktiviti</string>
+    <string name="weekly_summary">RINGKASAN MINGGUAN</string>
+    <string name="threats_blocked">ancaman berjaya dihalang</string>
+    <string name="latest_threats">Ancaman Terkini</string>
+    <string name="no_alerts">Tiada amaran ditemui.</string>
+
+    <!-- Insights Tips -->
+    <string name="tip_otp_title">Tiada perkongsian OTP</string>
+    <string name="tip_otp_desc">Bank tidak akan meminta OTP anda melalui telefon.</string>
+    <string name="tip_slow_title">Bertenang</string>
+    <string name="tip_slow_desc">Penipu mencipta kegentingan untuk membuat anda panik.</string>
+    <string name="tip_verify_title">Sahkan pengirim</string>
+    <string name="tip_verify_desc">Periksa alamat e-mel atau nombor telefon sebenar.</string>
+    <string name="tip_click_title">Jangan klik</string>
+    <string name="tip_click_desc">Pautan dalam SMS daripada nombor tidak dikenali sering berniat jahat.</string>
+
+    <string name="select_language">Pilih Bahasa</string>
+
+    <!-- Insights Screen -->
+    <string name="your_week">Minggu Anda</string>
+    <string name="no_threats">Tiada ancaman dikesan minggu ini. Kekal selamat! 🛡️</string>
+    <string name="blocked_threats_fmt">SafeX menghalang %d ancaman berpotensi.</string>
+    <string name="community_trends_title">Trend Komuniti (Minggu Ini)</string>
+    <string name="community_error">Gagal memuatkan data komuniti.</string>
+    <string name="community_empty">Tiada data komuniti lagi.</string>
+    <string name="total_scams_fmt">Jumlah penipuan dilaporkan: %d</string>
+    <string name="safety_tips_title">Tips Keselamatan</string>
+    <string name="region_asia">Asia</string>
+    <string name="region_global">Global</string>
+    <string name="news_retry">Cuba Lagi</string>
+    <string name="news_failed">Gagal memuatkan berita.</string>
+    <string name="news_unavailable">Tiada berita tersedia.</string>
 </resources>

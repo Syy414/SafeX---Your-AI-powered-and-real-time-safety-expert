@@ -160,7 +160,7 @@ fun ScanResultScreen(
                         containerColor = badgeColor
                     )
                 ) {
-                    Text("Save to Alerts", color = Color.White)
+                    Text("See why", color = Color.White)
                 }
             }
         }

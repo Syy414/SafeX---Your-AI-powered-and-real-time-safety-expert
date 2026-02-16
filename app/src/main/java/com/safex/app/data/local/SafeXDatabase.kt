@@ -6,10 +6,11 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.safex.app.data.NewsArticleDao
 import com.safex.app.data.NewsArticleEntity
+import com.safex.app.data.NewsReadHistoryEntity
 
 @Database(
-    entities = [AlertEntity::class, NewsArticleEntity::class],
-    version = 2,
+    entities = [AlertEntity::class, NewsArticleEntity::class, NewsReadHistoryEntity::class],
+    version = 3,
     exportSchema = false
 )
 abstract class SafeXDatabase : RoomDatabase() {

@@ -19,12 +19,96 @@
     <string name="language_chinese">中文</string>
 
     <string name="mode">模式</string>
-    <string name="mode_guardian">守护</string>
-    <string name="mode_companion">陪伴</string>
+    <string name="mode_guardian">守护模式</string>
+    <string name="mode_companion">伴侣模式</string>
+
+    <string name="refresh">刷新</string>
 
     <string name="news_title">诈骗新闻</string>
-    <string name="news_disclaimer">新闻链接将在浏览器中打开。请勿输入密码/OTP。</string>
+    <string name="news_disclaimer">新闻链接将在浏览器中打开。请勿在任何页面输入密码/OTP。</string>
     <string name="news_malaysia">马来西亚</string>
     <string name="news_global">全球</string>
-    <string name="refresh">刷新</string>
+    <string name="news_empty">未找到诈骗新闻。下拉刷新。</string>
+    <string name="news_error">加载新闻失败。显示缓存结果。</string>
+    <string name="news_open">打开</string>
+    <string name="news_loading">正在加载新闻…</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">设置</string>
+    <string name="protection_mode">保护模式</string>
+    <string name="mode_guardian_title">守护模式 (主动)</string>
+    <string name="mode_guardian_desc">自动扫描通知和新图片以检测威胁。</string>
+    <string name="mode_companion_title">伴侣模式 (手动)</string>
+    <string name="mode_companion_desc">仅在您手动选择时进行扫描。</string>
+    
+    <string name="guardian_monitors">守护监控</string>
+    <string name="monitor_notif_title">通知监控</string>
+    <string name="monitor_notif_desc">扫描传入消息中的诈骗模式。</string>
+    <string name="monitor_gallery_title">相册监控</string>
+    <string name="monitor_gallery_desc">扫描新截屏和图片以检测威胁。</string>
+    
+    <string name="testing_title">测试与诊断</string>
+    <string name="btn_demo_data">生成演示数据</string>
+    <string name="btn_reset_data">重置 / 清除数据</string>
+    <string name="toast_demo_added">已添加演示警报！</string>
+    <string name="toast_data_cleared">所有数据已清除。</string>
+    
+    <string name="about_title">关于 SafeX</string>
+    <string name="version_info">版本 1.0 (KitaHack 2026)</string>
+    <!-- Navigation -->
+    <string name="nav_home">首页</string>
+    <string name="nav_alerts">警报</string>
+    <string name="nav_insights">洞察</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- Home Screen -->
+    <string name="manual_check">手动安全检查</string>
+    <string name="check_link">检查链接安全</string>
+    <string name="active_protections">主动保护</string>
+    <string name="msg_guardian">消息卫士</string>
+    <string name="gal_guardian">相册卫士</string>
+    <string name="monitoring_active">监控以激活</string>
+    <string name="monitoring_disabled">已禁用</string>
+    <string name="status_protected">您受到保护</string>
+    <string name="status_paused">卫士已暂停</string>
+    <string name="desc_protected">SafeX 正在实时监控诈骗。</string>
+    <string name="desc_paused">与其启用卫士模式以保持安全。</string>
+    <string name="lbl_secure">安全</string>
+    <string name="lbl_paused">已暂停</string>
+    <string name="camera">相机</string>
+    <string name="gallery">相册</string>
+
+    <!-- Alerts Screen -->
+    <string name="activity_history">活动历史</string>
+    <string name="weekly_summary">每周摘要</string>
+    <string name="threats_blocked">成功拦截的威胁</string>
+    <string name="latest_threats">最新威胁</string>
+    <string name="no_alerts">未发现警报。</string>
+
+    <!-- Insights Tips -->
+    <string name="tip_otp_title">不分享 OTP</string>
+    <string name="tip_otp_desc">银行绝不会通过电话询问您的 OTP。</string>
+    <string name="tip_slow_title">慢下来</string>
+    <string name="tip_slow_desc">骗子制造紧迫感让您恐慌。停下来思考。</string>
+    <string name="tip_verify_title">验证发送者</string>
+    <string name="tip_verify_desc">检查实际的电子邮件地址或电话号码。</string>
+    <string name="tip_click_title">不要点击</string>
+    <string name="tip_click_desc">来自未知号码的短信链接通常是恶意的。</string>
+
+    <string name="select_language">选择语言</string>
+
+    <!-- Insights Screen -->
+    <string name="your_week">本周概况</string>
+    <string name="no_threats">本周未检测到威胁。保持安全！🛡️</string>
+    <string name="blocked_threats_fmt">SafeX 拦截了 %d 个潜在威胁。</string>
+    <string name="community_trends_title">社区趋势 (本周)</string>
+    <string name="community_error">无法加载社区数据。</string>
+    <string name="community_empty">暂无社区数据。</string>
+    <string name="total_scams_fmt">报告的欺诈总数：%d</string>
+    <string name="safety_tips_title">安全提示</string>
+    <string name="region_asia">亚洲</string>
+    <string name="region_global">全球</string>
+    <string name="news_retry">重试</string>
+    <string name="news_failed">加载新闻失败。</string>
+    <string name="news_unavailable">无可用新闻。</string>
 </resources>
