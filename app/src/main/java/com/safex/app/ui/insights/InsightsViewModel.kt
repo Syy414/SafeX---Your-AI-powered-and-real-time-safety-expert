@@ -56,6 +56,10 @@ class InsightsViewModel(
         loadCommunityInsights()
     }
 
+    fun refreshCommunityInsights() {
+        loadCommunityInsights()
+    }
+
     private fun loadCommunityInsights() {
         viewModelScope.launch {
             _communityState.value = CommunityState.Loading
@@ -77,10 +81,13 @@ class InsightsViewModel(
     }
 
     // Factory for manual dependency injection (since no Hilt yet)
-    class Factory(private val alertRepository: AlertRepository) : ViewModelProvider.Factory {
+    class Factory(
+        private val alertRepository: AlertRepository,
+        private val insightsRepository: InsightsRepository
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return InsightsViewModel(alertRepository) as T
+            return InsightsViewModel(alertRepository, insightsRepository) as T
         }
     }
 }

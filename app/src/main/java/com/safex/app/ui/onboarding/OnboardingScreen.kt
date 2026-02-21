@@ -98,16 +98,39 @@ fun OnboardingScreen(
                    Text("Guardian Permissions Required", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                    Spacer(Modifier.height(8.dp))
                    
-                   // Notification Listener
-                   Row(verticalAlignment = Alignment.CenterVertically) {
-                       Text(if (hasNotifAccess) "✅ Notifications" else "❌ Notifications", modifier = Modifier.weight(1f))
-                       if (!hasNotifAccess) {
-                           Button(onClick = {
-                               val intent = android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                               context.startActivity(intent)
-                           }) { Text("Grant") }
-                       }
-                   }
+                    // Notification Listener
+                    var showNotifDialog by remember { mutableStateOf(false) }
+
+                    if (showNotifDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showNotifDialog = false },
+                            title = { Text("Enable Notification Access") },
+                            text = { Text("To detect scam messages, SafeX needs access to notifications.\n\n1. You will be taken to Settings.\n2. Find 'SafeX' in the list.\n3. Turn the switch ON.") },
+                            confirmButton = {
+                                Button(onClick = {
+                                    showNotifDialog = false
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                    context.startActivity(intent)
+                                }) {
+                                    Text("Go to Settings")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showNotifDialog = false }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (hasNotifAccess) "✅ Notifications" else "❌ Notifications", modifier = Modifier.weight(1f))
+                        if (!hasNotifAccess) {
+                            Button(onClick = { showNotifDialog = true }) { 
+                                Text("Grant") 
+                            }
+                        }
+                    }
                    
                    // Gallery
                    Spacer(Modifier.height(4.dp))

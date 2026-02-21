@@ -10,6 +10,21 @@
     <string name="choose_image">Pilih imej</string>
     <string name="scan_qr">Imbas QR</string>
 
+    <string name="scan_title">🛡️ Imbasan SafeX</string>
+    <string name="scan_desc">Pilih kaedah imbasan untuk menyemak scam</string>
+    <string name="scan_opt_link_title">Tampal pautan</string>
+    <string name="scan_opt_link_desc">Semak jika URL selamat</string>
+    <string name="scan_opt_image_title">Pilih imej</string>
+    <string name="scan_opt_image_desc">Pilih dari galeri — OCR + Imbas QR</string>
+    <string name="scan_opt_camera_title">Imbas dengan kamera</string>
+    <string name="scan_opt_camera_desc">Halakan pada kod QR atau teks untuk mengimbas</string>
+    <string name="scan_progress">Mengimbas imej…</string>
+
+    <string name="scan_safe_step1">✅ Pautan nampak selamat</string>
+    <string name="scan_safe_step2">Berhati-hati walaupun pautan selamat</string>
+    <string name="scan_danger_step1">⛔ Jangan lawati pautan ini</string>
+    <string name="scan_danger_step2">Sekat penghantar jika boleh</string>
+
     <string name="report">Lapor</string>
     <string name="mark_safe">Tanda Selamat</string>
 
@@ -111,4 +126,45 @@
     <string name="news_retry">Cuba Lagi</string>
     <string name="news_failed">Gagal memuatkan berita.</string>
     <string name="news_unavailable">Tiada berita tersedia.</string>
+
+    <string name="top_categories">Kategori Tertinggi:</string>
+    <string name="risk_high">RISIKO TINGGI</string>
+    <string name="risk_medium">RISIKO SEDERHANA</string>
+    <string name="risk_low">RISIKO RENDAH</string>
+    <string name="risk_safe">SELAMAT</string>
+    <string name="risk_unknown">TIDAK DIKETAHUI</string>
+
+    <string name="level_high">TINGGI</string>
+    <string name="level_medium">SEDERHANA</string>
+    <string name="level_low">RENDAH</string>
+    <string name="scan_result_text_header">📝 Teks / Kandungan Dikesan</string>
+    <string name="scan_result_url_header">🔗 Pautan Dikesan</string>
+    <string name="scan_why_flagged">Mengapa ia ditandakan</string>
+    <string name="scan_next_steps">Langkah seterusnya</string>
+    <string name="btn_scan_again">Imbas lagi</string>
+    <string name="btn_see_why">Lihat sebab</string>
+    <string name="btn_done">Selesai</string>
+    <string name="btn_detect_ai">Kesan dengan AI</string>
+    <string name="cat_human_trafficking">Pemerdagangan Manusia (KK Farm)</string>
+    <string name="cat_investment">Penipuan Pelaburan (Pig Butchering)</string>
+    <string name="cat_phishing">Phishing</string>
+    <string name="cat_love_scam">Love Scam</string>
+    <string name="cat_impersonation">Penyamaran</string>
+
+    <!-- Alert Detail UI -->
+    <string name="alert_details_title">Butiran Amaran</string>
+    <string name="analyzing_gemini">Menganalisis dengan Gemini...</string>
+    <string name="btn_go_back">Kembali</string>
+    <string name="btn_report_scam">Lapor Penipuan</string>
+    <string name="analysis_details">Butiran Analisis</string>
+    <string name="risk_level_prefix">TAHAP RISIKO: </string>
+    <string name="why_flagged_title">Mengapa SafeX menandakan ini</string>
+    <string name="what_to_do_title">Apa yang patut anda lakukan</string>
+    <string name="what_not_to_do_title">Apa yang TIDAK patut dilakukan</string>
+    <string name="confidence_source">Keyakinan: %1$d%% • Sumber: Gemini</string>
+
+    <string name="score_breakdown_title">Pecahan Markah</string>
+    <string name="score_rules">Kebarangkalian Peraturan: %1$d/20</string>
+    <string name="score_tflite">Kebarangkalian Model AI: %1$d/80</string>
+    <string name="score_total">Jumlah Kebarangkalian Penipuan: %1$d%%</string>
 </resources>

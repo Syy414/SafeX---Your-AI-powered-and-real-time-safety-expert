@@ -78,8 +78,8 @@ class ScanTextWorker(
                     // C) Triage
                     val result = triageEngine.analyze(fullText)
 
-                    // D) Alert if HIGH risk
-                    if (result.riskLevel == "HIGH") {
+                    // D) Alert if score ≥ threshold (MEDIUM or HIGH — combined ≥ 0.50)
+                    if (result.riskLevel == "HIGH" || result.riskLevel == "MEDIUM") {
                         val alertId = repository.createAlert(
                             type = "gallery",
                             riskLevel = result.riskLevel,
@@ -87,7 +87,13 @@ class ScanTextWorker(
                             tacticsJson = result.tactics.toString(),
                             snippetRedacted = fullText.take(500),
                             extractedUrl = if (result.containsUrl) "URL detected" else null,
-                            headline = result.headline
+                            headline = result.headline,
+                            sender = "Gallery",
+                            fullMessage = fullText,
+                            geminiAnalysis = result.geminiAnalysis,
+                            analysisLanguage = result.analysisLanguage,
+                            heuristicScore = result.heuristicScore,
+                            tfliteScore = result.tfliteScore
                         )
 
                         // E) Notification

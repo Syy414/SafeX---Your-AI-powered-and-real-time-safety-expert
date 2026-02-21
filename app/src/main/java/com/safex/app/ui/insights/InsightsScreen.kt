@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,8 +59,12 @@ import com.safex.app.data.AlertRepository
 import com.safex.app.data.NewsArticleEntity
 import com.safex.app.data.NewsRepository
 import com.safex.app.data.NewsResult
+import com.safex.app.data.UserPrefs
+import com.safex.app.data.MlKitTranslator
 import com.safex.app.data.local.SafeXDatabase
 import com.safex.app.data.local.CategoryCount
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,19 +76,51 @@ fun InsightsScreen() {
     // 1. ViewModels / Repositories
     val db = SafeXDatabase.getInstance(context)
     val alertRepo = AlertRepository.getInstance(db)
+    val insightsRepo = com.safex.app.data.InsightsRepository.getInstance() // Use Singleton
     val insightsViewModel: InsightsViewModel = viewModel(
-        factory = InsightsViewModel.Factory(alertRepo)
+        factory = InsightsViewModel.Factory(alertRepo, insightsRepo)
     )
     val uiState by insightsViewModel.uiState.collectAsState()
 
-    // 2. News State (kept local to this screen for MVP simplicity)
+    // 2. News State
     val newsRepo = remember { NewsRepository(context) }
-    // var selectedRegion by remember { mutableStateOf("ASIA") } // Removed
     var isNewsRefreshing by remember { mutableStateOf(false) }
     var newsError by remember { mutableStateOf<String?>(null) }
     
-    // observeNews now handles translation automatically based on UserPrefs
-    val newsArticles by newsRepo.observeNews().collectAsState(initial = emptyList())
+    // observeNews now streams the English database directly
+    val rawNewsArticles by newsRepo.observeNews().collectAsState(initial = emptyList())
+    var translatedArticles by remember { mutableStateOf<List<NewsArticleEntity>>(emptyList()) }
+    var isTranslating by remember { mutableStateOf(false) }
+
+    val prefs = remember { UserPrefs(context) }
+    val userLang by prefs.languageTag.collectAsState(initial = "en")
+    val currentLang = if (userLang.isNotBlank()) userLang else "en"
+
+    LaunchedEffect(rawNewsArticles, currentLang) {
+        if (rawNewsArticles.isEmpty()) {
+            translatedArticles = emptyList()
+            return@LaunchedEffect
+        }
+        isTranslating = true
+        withContext(Dispatchers.IO) {
+            if (currentLang == "en") {
+                translatedArticles = rawNewsArticles
+            } else {
+                translatedArticles = rawNewsArticles.map { article ->
+                    val tTitle = MlKitTranslator.translate(article.title, currentLang)
+                    val tSummary = article.summary?.let { MlKitTranslator.translate(it, currentLang) }
+                    val tTips = article.warningsAndTips?.let { MlKitTranslator.translate(it, currentLang) }
+                    
+                    article.copy(
+                        title = tTitle,
+                        summary = tSummary,
+                        warningsAndTips = tTips
+                    )
+                }
+            }
+        }
+        isTranslating = false
+    }
 
     fun fetchNews(force: Boolean = false) {
         scope.launch {
@@ -108,6 +145,7 @@ fun InsightsScreen() {
 
     LaunchedEffect(Unit) {
         fetchNews()
+        insightsViewModel.refreshCommunityInsights()
     }
 
     Scaffold(
@@ -117,11 +155,7 @@ fun InsightsScreen() {
             )
         }
     ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = uiState.communityLoading || isNewsRefreshing,
-            onRefresh = {
-                fetchNews(force = true)
-            },
+        Box(
             modifier = Modifier.padding(innerPadding).fillMaxSize()
         ) {
             LazyColumn(
@@ -129,16 +163,10 @@ fun InsightsScreen() {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // --- 1. Personal Summary ---
-                item { PersonalSummarySection(uiState) }
-
-                // --- 2. Community Trends ---
-                item { CommunityTrendsSection(uiState) }
-
-                // --- 3. Education ---
+                // --- 2. Education ---
                 item { EducationSection() }
 
-                // --- 4. News Section (Header only) ---
+                // --- 3. News Section (Header only) ---
                 item {
                     NewsHeaderSection(
                         errorMsg = newsError,
@@ -146,18 +174,38 @@ fun InsightsScreen() {
                     )
                 }
 
-                // --- 5. News List ---
-                if (newsArticles.isEmpty() && !isNewsRefreshing) {
+                // --- 4. News List ---
+                if (translatedArticles.isEmpty() && (!isNewsRefreshing && !isTranslating)) {
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "You're all caught up!",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { 
+                                fetchNews(force = true)
+                                insightsViewModel.refreshCommunityInsights()
+                            }) {
+                                Text("Refresh News")
+                            }
+                        }
+                    }
+                } else if (isTranslating || isNewsRefreshing) {
                     item {
                         Box(
                             modifier = Modifier.fillMaxWidth().height(100.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.news_unavailable), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         }
                     }
                 } else {
-                    items(newsArticles, key = { it.url }) { article ->
+                    items(translatedArticles, key = { it.url }) { article ->
                         NewsArticleCard(article) {
                             // 1. Mark as read (will remove from list)
                             scope.launch {
@@ -174,92 +222,7 @@ fun InsightsScreen() {
     }
 }
 
-// --- Sub-components ---
-
-@Composable
-fun PersonalSummarySection(state: InsightsUiState) {
-    Column {
-        Text(
-            text = stringResource(R.string.your_week),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                if (state.personalWeeklyCount == 0) {
-                    Text(
-                        stringResource(R.string.no_threats),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.blocked_threats_fmt, state.personalWeeklyCount),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (state.personalTopCategories.isNotEmpty()) {
-                        Text("Top Categories:", style = MaterialTheme.typography.labelLarge)
-                        state.personalTopCategories.forEach { item ->
-                            val percent = (item.count.toFloat() / state.personalWeeklyCount.coerceAtLeast(1))
-                            StatRow(label = item.category, count = item.count, percent = percent)
-                        }
-                    }
-                    // Tactics omitted for brevity in MVP UI if categories exist, or show both.
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CommunityTrendsSection(state: InsightsUiState) {
-    Column {
-        Text(
-            text = stringResource(R.string.community_trends_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                if (state.communityLoading) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    }
-                } else if (state.communityError != null) {
-                    Text(
-                        text = stringResource(R.string.community_error),
-                        color = MaterialTheme.colorScheme.error
-                    )
-                } else if (state.communityWeekly == null) {
-                    Text(stringResource(R.string.community_empty), style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    val total = state.communityWeekly.totalReports
-                    Text(stringResource(R.string.total_scams_fmt, total), style = MaterialTheme.typography.labelMedium)
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text("Top Categories:", style = MaterialTheme.typography.labelLarge)
-                    state.communityWeekly.topCategories.entries.take(3).forEach { (cat, count) ->
-                        StatRow(cat, count.toInt(), count.toFloat() / total.coerceAtLeast(1))
-                    }
-                }
-            }
-        }
-    }
-}
+// ── Sub-components ──
 
 @Composable
 fun EducationSection() {
@@ -375,6 +338,29 @@ fun NewsArticleCard(article: NewsArticleEntity, onClick: () -> Unit) {
                 )
             }
             
+            if (!article.warningsAndTips.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
+                        Text(
+                            text = stringResource(R.string.safety_tips_title),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = article.warningsAndTips,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -391,41 +377,6 @@ fun NewsArticleCard(article: NewsArticleEntity, onClick: () -> Unit) {
                 )
             }
         }
-    }
-}
-
-@Composable
-fun StatRow(label: String, count: Int, percent: Float) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() },
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Text(
-            text = count.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(4.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(percent)
-                .height(4.dp)
-                .background(MaterialTheme.colorScheme.primary)
-        )
     }
 }
 

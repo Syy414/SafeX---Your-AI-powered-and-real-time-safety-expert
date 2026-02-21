@@ -39,6 +39,7 @@ fun ScanResultScreen(
     onSaveToAlerts: () -> Unit,
     onScanAgain: () -> Unit
 ) {
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -47,11 +48,11 @@ fun ScanResultScreen(
     ) {
         // ── Risk Badge ──────────────────────────────────
         val (badgeColor, badgeText) = when (result.riskLevel) {
-            RiskLevel.HIGH -> Color(0xFFD32F2F) to "HIGH RISK"
-            RiskLevel.MEDIUM -> Color(0xFFFF9800) to "MEDIUM RISK"
-            RiskLevel.LOW -> Color(0xFF4CAF50) to "LOW RISK"
-            RiskLevel.SAFE -> Color(0xFF2E7D32) to "SAFE"
-            RiskLevel.UNKNOWN -> Color(0xFF757575) to "UNKNOWN"
+            RiskLevel.HIGH -> Color(0xFFD32F2F) to androidx.compose.ui.res.stringResource(com.safex.app.R.string.risk_high)
+            RiskLevel.MEDIUM -> Color(0xFFFF9800) to androidx.compose.ui.res.stringResource(com.safex.app.R.string.risk_medium)
+            RiskLevel.LOW -> Color(0xFF4CAF50) to androidx.compose.ui.res.stringResource(com.safex.app.R.string.risk_low)
+            RiskLevel.SAFE -> Color(0xFF2E7D32) to androidx.compose.ui.res.stringResource(com.safex.app.R.string.risk_safe)
+            RiskLevel.UNKNOWN -> Color(0xFF757575) to androidx.compose.ui.res.stringResource(com.safex.app.R.string.risk_unknown)
         }
 
         Box(
@@ -73,14 +74,40 @@ fun ScanResultScreen(
                 Text(
                     text = result.headline,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ── Extracted URL ────────────────────────────────
+        // ── Extracted Text / Keyword (Shown BEFORE See Why) ────────────────
+        result.extractedText?.takeIf { it.isNotBlank() }?.let { text ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_result_text_header),
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (text.length > 500) text.take(500) + "…" else text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        
+        // ── Extracted URL (if any) ────────────────
         result.extractedUrl?.let { url ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -90,7 +117,7 @@ fun ScanResultScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "🔗 Detected URL",
+                        text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_result_url_header),
                         fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.labelLarge
                     )
@@ -105,42 +132,12 @@ fun ScanResultScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // ── Why flagged ──────────────────────────────────
-        SectionCard(title = "Why it was flagged", items = result.reasons)
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // ── Next steps ───────────────────────────────────
-        SectionCard(title = "What to do next", items = result.nextSteps)
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // ── Extracted text preview ───────────────────────
-        result.extractedText?.takeIf { it.isNotBlank() }?.let { text ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "📝 Extracted text",
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (text.length > 300) text.take(300) + "…" else text,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        // NOTE: "Why it was flagged" and "Next Steps" are hidden here.
+        // User must click "See Why" to go to Alert Detail for full Gemini explanation.
 
         // ── Action buttons ───────────────────────────────
+        Spacer(modifier = Modifier.weight(1f)) // Push buttons to bottom if feasible, or just spacer
+        
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -149,49 +146,28 @@ fun ScanResultScreen(
                 onClick = onScanAgain,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Scan again")
+                Text(androidx.compose.ui.res.stringResource(com.safex.app.R.string.btn_scan_again))
             }
 
             if (result.riskLevel == RiskLevel.HIGH || result.riskLevel == RiskLevel.MEDIUM) {
                 Button(
                     onClick = onSaveToAlerts,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = badgeColor
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = badgeColor)
                 ) {
-                    Text("See why", color = Color.White)
+                    Text(androidx.compose.ui.res.stringResource(com.safex.app.R.string.btn_see_why), color = Color.White)
+                }
+            } else {
+                // Safe/Low risk — let user run AI analysis for confirmation
+                Button(
+                    onClick = onSaveToAlerts,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(androidx.compose.ui.res.stringResource(com.safex.app.R.string.btn_detect_ai))
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(24.dp))
-    }
-}
-
-@Composable
-private fun SectionCard(title: String, items: List<String>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleSmall
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            items.forEach { item ->
-                Text(
-                    text = item,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-        }
     }
 }

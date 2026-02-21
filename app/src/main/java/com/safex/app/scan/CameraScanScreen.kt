@@ -229,28 +229,22 @@ private fun capturePhoto(
     imageCapture: ImageCapture,
     onCaptured: (Uri) -> Unit
 ) {
-    val name = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    // Save to private cache directory to avoid "Auto-Detection" picking it up (stopping spam)
+    val photoFile = java.io.File(
+        context.cacheDir,
+        "scan_${System.currentTimeMillis()}.jpg"
+    )
 
-    val contentValues = ContentValues().apply {
-        put(MediaStore.MediaColumns.DISPLAY_NAME, "safex_scan_$name")
-        put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/SafeX")
-        }
-    }
-
-    val outputOptions = ImageCapture.OutputFileOptions.Builder(
-        context.contentResolver,
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-        contentValues
-    ).build()
+    val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
     imageCapture.takePicture(
         outputOptions,
         ContextCompat.getMainExecutor(context),
         object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                output.savedUri?.let { onCaptured(it) }
+                // Use the file URI
+                val savedUri = Uri.fromFile(photoFile)
+                onCaptured(savedUri)
             }
 
             override fun onError(exc: ImageCaptureException) {
@@ -259,3 +253,4 @@ private fun capturePhoto(
         }
     )
 }
+

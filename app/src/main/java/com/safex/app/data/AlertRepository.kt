@@ -17,8 +17,10 @@ import java.util.UUID
  */
 class AlertRepository(private val dao: AlertDao) {
 
-    /** Observe all alerts (newest first). */
-    val alerts: Flow<List<AlertEntity>> = dao.observeAll()
+    /** Observe all alerts (newest first). Filters out 'manual_hidden' type. */
+    val alerts: Flow<List<AlertEntity>> = dao.observeAll().map { list ->
+        list.filter { it.type != "manual_hidden" }
+    }
 
     /** Single alert by id, or null. */
     suspend fun getAlert(id: String): AlertEntity? =
@@ -35,7 +37,13 @@ class AlertRepository(private val dao: AlertDao) {
         tacticsJson: String,
         snippetRedacted: String,
         extractedUrl: String? = null,
-        headline: String? = null
+        headline: String? = null,
+        sender: String? = null,
+        fullMessage: String? = null,
+        geminiAnalysis: String? = null,  // pre-fetched from Level 3, null for L1-caught alerts
+        analysisLanguage: String? = null,
+        heuristicScore: Float? = null,
+        tfliteScore: Float? = null
     ): String = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
         val entity = AlertEntity(
@@ -47,11 +55,41 @@ class AlertRepository(private val dao: AlertDao) {
             tacticsJson = tacticsJson,
             snippetRedacted = snippetRedacted,
             extractedUrl = extractedUrl,
-            headline = headline
+            headline = headline,
+            sender = sender,
+            fullMessage = fullMessage,
+            geminiAnalysis = geminiAnalysis,
+            analysisLanguage = analysisLanguage,
+            heuristicScore = heuristicScore,
+            tfliteScore = tfliteScore
         )
         dao.insert(entity)
+        
+        // Hook: Update Community Trends Mock Data immediately
+        try {
+            InsightsRepository.getInstance().incrementCategory(category)
+        } catch (e: Exception) {
+            // Ignore
+        }
+        
         id
     }
+
+    /**
+     * Updates an existing alert with Gemini analysis.
+     * Uses DAO's @Update or @Query.
+     */
+    suspend fun updateGeminiAnalysis(id: String, analysis: String, language: String) =
+        withContext(Dispatchers.IO) {
+            val alert = dao.getById(id)
+            if (alert != null) {
+                val updated = alert.copy(
+                    geminiAnalysis = analysis,
+                    analysisLanguage = language
+                )
+                dao.update(updated)
+            }
+        }
 
     /** Delete after review (Report / Mark safe). */
     suspend fun deleteAlert(id: String) =

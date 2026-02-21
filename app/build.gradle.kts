@@ -47,6 +47,10 @@ android {
             useLegacyPackaging = true
         }
     }
+
+    androidResources {
+        noCompress += "tflite"
+    }
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
@@ -104,5 +108,8 @@ dependencies {
 
     // MediaPipe Tasks (Modern replacement for TFLite Task Lib - supports 16KB pages from v0.10.26+)
     implementation("com.google.mediapipe:tasks-text:0.10.32")
+
+    // TFLite interpreter (for on-device char-CNN scam detector)
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
 }
 

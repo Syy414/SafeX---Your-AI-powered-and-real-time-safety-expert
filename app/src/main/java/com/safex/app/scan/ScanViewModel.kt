@@ -25,22 +25,28 @@ class ScanViewModel(private val context: Context) {
         AlertRepository.getInstance(SafeXDatabase.getInstance(context))
     }
 
-    // ── Paste link scan (placeholder until Agent 6 backend) ──────────
+    // ── Paste link scan ──────────────────────────────────────────────
 
-    suspend fun scanLink(url: String) {
+    suspend fun scanLink(url: String, language: String = "en") {
         _state.value = ScanUiState.Scanning
         try {
-            // Call the new checkLink Cloud Function
-            val response = com.safex.app.data.CloudFunctionsClient.INSTANCE.checkLink(url)
+            // Call the checkLink Cloud Function, passing device language for localised response
+            val response = com.safex.app.data.CloudFunctionsClient.INSTANCE.checkLink(url, language)
             
             val result = ScanResult(
-                riskLevel = RiskLevel.valueOf(response.riskLevel), // Ensure RiskLevel enum matches or map safely
+                riskLevel = try { RiskLevel.valueOf(response.riskLevel) } catch (_: Exception) { RiskLevel.UNKNOWN },
                 headline = response.headline,
                 reasons = response.reasons,
                 nextSteps = if (response.safe) 
-                    listOf("✅ Link appears safe", "Use caution even with safe links") 
+                    listOf(
+                        context.getString(com.safex.app.R.string.scan_safe_step1), 
+                        context.getString(com.safex.app.R.string.scan_safe_step2)
+                    ) 
                 else 
-                    listOf("⛔ Do not visit this link", "Block the sender if possible"),
+                    listOf(
+                        context.getString(com.safex.app.R.string.scan_danger_step1), 
+                        context.getString(com.safex.app.R.string.scan_danger_step2)
+                    ),
                 extractedUrl = url,
                 scanType = ScanType.LINK
             )
@@ -100,16 +106,16 @@ class ScanViewModel(private val context: Context) {
                 ScanResult(
                     riskLevel = finalRiskLevel,
                     headline = triageResult.headline,
-                    // tactics are the reasons
                     reasons = triageResult.tactics.ifEmpty { listOf("Analysis completed") },
                     nextSteps = when (finalRiskLevel) {
-                        RiskLevel.HIGH -> listOf("Do not trust this content", "Block sender", "Delete immediately")
+                        RiskLevel.HIGH   -> listOf("Do not trust this content", "Block sender", "Delete immediately")
                         RiskLevel.MEDIUM -> listOf("Verify source carefully", "Do not click links", "Ask a friend")
-                        else -> listOf("Content appears safe", "Stay vigilant")
+                        else             -> listOf("Content appears safe", "Stay vigilant")
                     },
-                    extractedUrl = finalUrl,
-                    extractedText = combinedText,
-                    scanType = ScanType.IMAGE
+                    extractedUrl   = finalUrl,
+                    extractedText  = combinedText,
+                    scanType       = ScanType.IMAGE,
+                    geminiAnalysis = triageResult.geminiAnalysis
                 )
             }
             _state.value = ScanUiState.Result(result)
@@ -129,14 +135,21 @@ class ScanViewModel(private val context: Context) {
 
     suspend fun saveToAlerts(result: ScanResult): String {
         return withContext(Dispatchers.IO) {
+            // User feedback: "boxes appear at alert are the ones which are auto detected"
+            // So manual scans should NOT appear in the main list.
+            // We use a special type "manual_hidden" to filter them out in UI/Repo,
+            // but still count them in weekly stats if needed.
             alertRepo.createAlert(
-                type = "manual",
+                type = "manual_hidden",
                 riskLevel = result.riskLevel.name,
-                category = "unknown", // final category comes from Gemini on detail screen
+                category = "unknown",
                 tacticsJson = result.reasons.joinToString(",", "[", "]") { "\"$it\"" },
                 snippetRedacted = result.extractedText?.take(500) ?: "",
                 extractedUrl = result.extractedUrl,
-                headline = result.headline
+                headline = result.headline,
+                sender = "Manual Scan",
+                fullMessage = result.extractedText,
+                geminiAnalysis = result.geminiAnalysis
             )
         }
     }

@@ -11,7 +11,9 @@ data class ExplainAlertRequest(
     val tactics: List<String> = emptyList(),
     val snippet: String = "",
     val extractedUrl: String? = null,
-    val doSafeBrowsingCheck: Boolean = false
+    val doSafeBrowsingCheck: Boolean = false,
+    val heuristicScore: Float? = null,
+    val tfliteScore: Float? = null
 ) {
     fun toMap(): Map<String, Any?> = buildMap {
         put("alertType", alertType)
@@ -21,6 +23,8 @@ data class ExplainAlertRequest(
         put("snippet", snippet.take(500))
         if (extractedUrl != null) put("extractedUrl", extractedUrl)
         put("doSafeBrowsingCheck", doSafeBrowsingCheck)
+        if (heuristicScore != null) put("heuristicScore", heuristicScore)
+        if (tfliteScore != null) put("tfliteScore", tfliteScore)
     }
 }
 

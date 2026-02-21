@@ -84,15 +84,16 @@ class CloudFunctionsClient(
 
     /**
      * Call `checkLink` for manual scan.
+     * @param language BCP-47 locale code: "en", "zh", "ms"
      */
-    suspend fun checkLink(url: String): com.safex.app.data.models.CheckLinkResponse {
+    suspend fun checkLink(url: String, language: String = "en"): com.safex.app.data.models.CheckLinkResponse {
         FirebaseAuthHelper.ensureSignedIn()
 
         return try {
-            withTimeout(10_000) {
+            withTimeout(15_000) {
                 val result = functions
                     .getHttpsCallable("checkLink")
-                    .call(mapOf("url" to url))
+                    .call(mapOf("url" to url, "language" to language))
                     .await()
 
                 @Suppress("UNCHECKED_CAST")
@@ -101,19 +102,19 @@ class CloudFunctionsClient(
             }
         } catch (e: Exception) {
             Log.e("SafeX:Functions", "checkLink failed", e)
-             com.safex.app.data.models.CheckLinkResponse(
-                 safe = true, 
-                 riskLevel = "UNKNOWN", 
-                 headline = "Check failed: ${e.message}",
-                 reasons = listOf("Network or server error.")
-             )
+            com.safex.app.data.models.CheckLinkResponse(
+                safe = false,
+                riskLevel = "UNKNOWN",
+                headline = "Check failed: ${e.message}",
+                reasons = listOf("Network or server error.")
+            )
         }
     }
 
     /**
-     * Call `getScamNewsDigest` to fetches summarized news.
+     * Call `getScamNewsDigest` to fetches summarized news in English.
      */
-    suspend fun fetchNewsDigest(region: String, language: String): List<com.safex.app.data.NewsArticleEntity> {
+    suspend fun fetchNewsDigest(region: String): List<com.safex.app.data.NewsArticleEntity> {
         // Auth optional? The backend checks it, so yes.
         FirebaseAuthHelper.ensureSignedIn()
 
@@ -121,7 +122,7 @@ class CloudFunctionsClient(
             withTimeout(20_000) { // Longer timeout for AI
                 val result = functions
                     .getHttpsCallable("getScamNewsDigest")
-                    .call(mapOf("region" to region, "language" to language))
+                    .call(mapOf("region" to region))
                     .await()
                 
                 @Suppress("UNCHECKED_CAST")
@@ -133,6 +134,7 @@ class CloudFunctionsClient(
                     val title = map["title"] as? String ?: return@mapNotNull null
                     val domain = map["domain"] as? String ?: ""
                     val summary = map["summary"] as? String
+                    val warningsAndTips = map["warningsAndTips"] as? String
                     val seenDate = map["seenDate"] as? String ?: ""
                     val imageUrl = map["imageUrl"] as? String
                     
@@ -140,6 +142,7 @@ class CloudFunctionsClient(
                         url = url,
                         title = title,
                         summary = summary,
+                        warningsAndTips = warningsAndTips,
                         domain = domain,
                         seenDate = seenDate,
                         imageUrl = imageUrl,

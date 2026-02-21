@@ -24,6 +24,9 @@ class UserPrefs(private val context: Context) {
     // Last scan timestamp for gallery worker
     private val KEY_LAST_SCAN = longPreferencesKey("last_scan_timestamp")
 
+    // Track last fetched language for Scam News
+    private val KEY_LAST_NEWS_LANG = stringPreferencesKey("last_news_lang")
+
     val languageTag: Flow<String> =
         context.dataStore.data.map { prefs -> prefs[KEY_LANGUAGE] ?: "" }
 
@@ -41,6 +44,9 @@ class UserPrefs(private val context: Context) {
 
     val lastScanTimestamp: Flow<Long> =
         context.dataStore.data.map { prefs -> prefs[KEY_LAST_SCAN] ?: 0L }
+
+    val lastNewsLanguage: Flow<String> = 
+        context.dataStore.data.map { prefs -> prefs[KEY_LAST_NEWS_LANG] ?: "" }
 
     suspend fun setLanguageTag(tag: String) {
         context.dataStore.edit { it[KEY_LANGUAGE] = tag }
@@ -64,5 +70,9 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setLastScanTimestamp(epochMillis: Long) {
         context.dataStore.edit { it[KEY_LAST_SCAN] = epochMillis }
+    }
+
+    suspend fun setLastNewsLanguage(lang: String) {
+        context.dataStore.edit { it[KEY_LAST_NEWS_LANG] = lang }
     }
 }

@@ -14,5 +14,6 @@ data class NewsArticleEntity(
     @ColumnInfo(name = "seenDate") val seenDate: String,
     @ColumnInfo(name = "region") val region: String,
     @ColumnInfo(name = "cachedAt") val cachedAt: Long,
-    @ColumnInfo(name = "summary") val summary: String? = null
+    @ColumnInfo(name = "summary") val summary: String? = null,
+    @ColumnInfo(name = "warningsAndTips") val warningsAndTips: String? = null
 )

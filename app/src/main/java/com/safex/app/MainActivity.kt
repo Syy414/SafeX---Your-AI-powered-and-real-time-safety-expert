@@ -122,12 +122,22 @@ fun SafeXAppRoot() {
                     if (chosenMode == "Guardian") {
                         prefs.setNotificationMonitoring(true)
                         prefs.setGalleryMonitoring(true)
+                        
+                        // Start background worker immediately
+                        com.safex.app.guardian.GalleryScanWork.startPeriodic(context)
                     }
                     prefs.setOnboarded(true)
                 }
             }
         }
         true -> {
+            // Ensure worker is running if enabled (idempotent call)
+            LaunchedEffect(mode) {
+                 if (mode == "Guardian") {
+                     com.safex.app.guardian.GalleryScanWork.startPeriodic(context)
+                 }
+            }
+            
             // Real app with full navigation
             SafeXApp(userPrefs = prefs)
         }

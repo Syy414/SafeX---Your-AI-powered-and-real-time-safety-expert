@@ -33,6 +33,19 @@ object GalleryScanWork {
         WorkManager.getInstance(context).enqueue(req)
     }
 
+    /**
+     * Schedules a one-time scan but only if one isn't already pending/running.
+     * Use this when triggered by gallery observer to avoid scan pile-up.
+     */
+    fun runOnceUnique(context: Context) {
+        val req = OneTimeWorkRequestBuilder<ScanTextWorker>().build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "safex_gallery_scan_instant",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            req
+        )
+    }
+
     fun stop(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
     }

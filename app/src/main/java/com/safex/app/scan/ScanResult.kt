@@ -10,7 +10,8 @@ data class ScanResult(
     val nextSteps: List<String>,
     val extractedUrl: String? = null,
     val extractedText: String? = null,
-    val scanType: ScanType
+    val scanType: ScanType,
+    val geminiAnalysis: String? = null  // pre-fetched if combined score ≥ 0.50
 )
 
 enum class RiskLevel { HIGH, MEDIUM, LOW, SAFE, UNKNOWN }

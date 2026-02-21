@@ -4,7 +4,6 @@ import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import com.safex.app.data.local.AlertEntity
 import com.safex.app.data.local.SafeXDatabase
 import com.safex.app.data.UserPrefs
 import kotlinx.coroutines.CoroutineScope
@@ -12,26 +11,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.UUID
 import org.json.JSONArray
+import java.util.LinkedHashMap
 
 class GuardianNotificationListener : NotificationListenerService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    // Use Hybrid engine: Rules First -> then AI
-    private val triageEngine: TriageEngine by lazy { 
-        HybridTriageEngine(this) 
-    }
+    private val triageEngine: TriageEngine by lazy { HybridTriageEngine(this) }
 
-    private val dao by lazy { SafeXDatabase.getInstance(this).alertDao() }
+    private val alertRepo by lazy { com.safex.app.data.AlertRepository.getInstance(SafeXDatabase.getInstance(this)) }
     private val prefs by lazy { UserPrefs(this) }
+
+    /**
+     * Deduplication cache: stores MD5 hashes of recently alerted notification texts.
+     * Evicts oldest entry when size exceeds 50.
+     */
+    private val recentHashes: LinkedHashMap<String, Boolean> = object : LinkedHashMap<String, Boolean>(50, 0.75f, true) {
+        override fun removeEldestEntry(eldest: Map.Entry<String, Boolean>) = size > 50
+    }
 
     // ContentObserver to trigger instant scans
     private val galleryObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
             super.onChange(selfChange, uri)
             Log.d(TAG, "Gallery change detected. Triggering instant scan.")
-            GalleryScanWork.runOnceNow(this@GuardianNotificationListener)
+            // Use unique work name to prevent multiple scans stacking up
+            GalleryScanWork.runOnceUnique(this@GuardianNotificationListener)
         }
     }
 
@@ -90,39 +95,56 @@ class GuardianNotificationListener : NotificationListenerService() {
             try {
                 // Guard: only run if Guardian mode AND notification monitoring enabled
                 val mode = prefs.mode.first()
-                if (mode != "guardian") return@launch
+                // Fix: MainActivity saves "Guardian", so we must ignore case or match exact string
+                if (!mode.equals("guardian", ignoreCase = true)) return@launch
 
                 val monitoringEnabled = prefs.notificationMonitoringEnabled.first()
                 if (!monitoringEnabled) return@launch
 
                 Log.d(TAG, "Triaging notification from ${sbn.packageName}")
 
+                // ── Deduplication: skip if we already alerted on identical text ──
+                val contentHash = combined.hashCode().toString()
+                if (recentHashes.containsKey(contentHash)) {
+                    Log.d(TAG, "Skipping duplicate notification (same content hash).")
+                    return@launch
+                }
+                recentHashes[contentHash] = true
+
                 val result = triageEngine.analyze(combined)
 
                 // Only create alerts for HIGH (and optionally MEDIUM for demo data)
-                if (result.riskLevel != "HIGH" && result.riskLevel != "MEDIUM") return@launch
+                
+                // Extract Sender (Title) and Full Message (Text)
+                val sender = extras.getString(android.app.Notification.EXTRA_TITLE) ?: "Unknown"
+                val fullMessage = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: combined
 
-                val snippet = combined.take(500)
-                // Convert list of tactics to JSON string
-                val tacticsJson = JSONArray(result.tactics).toString()
-
-                val alert = AlertEntity(
-                    id = UUID.randomUUID().toString(),
-                    createdAt = System.currentTimeMillis(),
-                    type = "NOTIFICATION",
-                    riskLevel = result.riskLevel,
-                    category = result.category,
-                    tacticsJson = tacticsJson,
-                    snippetRedacted = snippet,
-                    extractedUrl = if (result.containsUrl) extractFirstUrl(combined) else null,
-                    headline = result.headline
-                )
-
-                dao.insert(alert)
-                Log.d(TAG, "Alert saved: ${alert.id} [${alert.riskLevel}]")
-
-                SafeXNotificationHelper.postWarningNotification(this@GuardianNotificationListener, alert)
-                Log.d(TAG, "Warning notification posted for alert ${alert.id}")
+                if (result.riskLevel == "HIGH" || result.riskLevel == "MEDIUM") {
+                    val alertId = alertRepo.createAlert(
+                        type = "Notification",
+                        riskLevel = result.riskLevel,
+                        category = result.category,
+                        tacticsJson = JSONArray(result.tactics).toString(),
+                        snippetRedacted = if (combined.length > 100) combined.take(100) + "..." else combined,
+                        extractedUrl = if (result.containsUrl) "URL detected" else null,
+                        headline = result.headline,
+                        sender = sender,
+                        fullMessage = fullMessage,
+                        geminiAnalysis = result.geminiAnalysis,
+                        analysisLanguage = result.analysisLanguage,
+                        heuristicScore = result.heuristicScore,
+                        tfliteScore = result.tfliteScore
+                    )
+                    
+                    // Post Warning Notification
+                    SafeXNotificationHelper.postWarning(
+                        context = this@GuardianNotificationListener,
+                        id = alertId,
+                        headline = result.headline,
+                        riskLevel = result.riskLevel,
+                        type = "notification"
+                    )
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing notification", e)
             }

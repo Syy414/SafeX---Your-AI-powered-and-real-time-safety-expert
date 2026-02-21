@@ -10,6 +10,21 @@
     <string name="choose_image">Choose image</string>
     <string name="scan_qr">Scan QR</string>
 
+    <string name="scan_title">🛡️ SafeX Scan</string>
+    <string name="scan_desc">Choose a scan method to check for scam content</string>
+    <string name="scan_opt_link_title">Paste a link</string>
+    <string name="scan_opt_link_desc">Check if a URL is safe</string>
+    <string name="scan_opt_image_title">Choose image</string>
+    <string name="scan_opt_image_desc">Pick from gallery — OCR + QR scan</string>
+    <string name="scan_opt_camera_title">Scan with camera</string>
+    <string name="scan_opt_camera_desc">Point at QR code or text to scan</string>
+    <string name="scan_progress">Scanning image…</string>
+    
+    <string name="scan_safe_step1">✅ Link appears safe</string>
+    <string name="scan_safe_step2">Use caution even with safe links</string>
+    <string name="scan_danger_step1">⛔ Do not visit this link</string>
+    <string name="scan_danger_step2">Block the sender if possible</string>
+
     <string name="report">Report</string>
     <string name="mark_safe">Mark Safe</string>
 
@@ -111,4 +126,45 @@
     <string name="news_retry">Retry</string>
     <string name="news_failed">Failed to load news.</string>
     <string name="news_unavailable">No news available.</string>
+    
+    <string name="top_categories">Top Categories:</string>
+    <string name="risk_high">HIGH RISK</string>
+    <string name="risk_medium">MEDIUM RISK</string>
+    <string name="risk_low">LOW RISK</string>
+    <string name="risk_safe">SAFE</string>
+    <string name="risk_unknown">UNKNOWN</string>
+    
+    <string name="level_high">HIGH</string>
+    <string name="level_medium">MEDIUM</string>
+    <string name="level_low">LOW</string>
+    <string name="scan_result_text_header">📝 Detect Text / Content</string>
+    <string name="scan_result_url_header">🔗 Detected URL</string>
+    <string name="scan_why_flagged">Why it was flagged</string>
+    <string name="scan_next_steps">What to do next</string>
+    <string name="btn_scan_again">Scan again</string>
+    <string name="btn_see_why">See why</string>
+    <string name="btn_done">Done</string>
+    <string name="btn_detect_ai">Detect with AI</string>
+    <string name="cat_human_trafficking">Human Trafficking (KK Farm)</string>
+    <string name="cat_investment">Investment Scam (Pig Butchering)</string>
+    <string name="cat_phishing">Phishing</string>
+    <string name="cat_love_scam">Love Scam</string>
+    <string name="cat_impersonation">Impersonation</string>
+
+    <!-- Alert Detail UI -->
+    <string name="alert_details_title">Alert Details</string>
+    <string name="analyzing_gemini">Analyzing with Gemini...</string>
+    <string name="btn_go_back">Go Back</string>
+    <string name="btn_report_scam">Report Scam</string>
+    <string name="analysis_details">Analysis Details</string>
+    <string name="risk_level_prefix">RISK LEVEL: </string>
+    <string name="why_flagged_title">Why SafeX flagged this</string>
+    <string name="what_to_do_title">What you should do</string>
+    <string name="what_not_to_do_title">What NOT to do</string>
+    <string name="confidence_source">Confidence: %1$d%% • Source: Gemini</string>
+
+    <string name="score_breakdown_title">Score Breakdown</string>
+    <string name="score_rules">Rules probability: %1$d/20</string>
+    <string name="score_tflite">AI Model probability: %1$d/80</string>
+    <string name="score_total">Total probability of scam: %1$d%%</string>
 </resources>

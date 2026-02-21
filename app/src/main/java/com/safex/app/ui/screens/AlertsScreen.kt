@@ -5,18 +5,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +40,11 @@ fun AlertsScreen(
     
     val alerts by viewModel.alerts.collectAsState(initial = emptyList())
     val weeklyCount by viewModel.weeklyCount.collectAsState(initial = 0)
+    
+    var expandedAlertId by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val currentLocale = androidx.core.os.ConfigurationCompat.getLocales(config).get(0)?.language ?: "en"
 
     Column(
         modifier = Modifier
@@ -58,14 +63,10 @@ fun AlertsScreen(
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
-            IconButton(onClick = { /* TODO */ }) {
-                Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray)
-            }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Weekly Summary Card (Real Data)
         WeeklySummaryCard(count = weeklyCount)
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -86,12 +87,17 @@ fun AlertsScreen(
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(alerts) { alert ->
+                    val isExpanded = expandedAlertId == alert.id
                     AlertItem(
-                        title = alert.headline ?: "Suspicious Activity",
-                        description = alert.snippetRedacted ?: "Details hidden for safety",
-                        riskLevel = try { RiskLevel.valueOf(alert.riskLevel) } catch(_:Exception) { RiskLevel.MEDIUM },
-                        timestamp = alert.createdAt, 
-                        onClick = { onAlertClick(alert.id) }
+                        alert = alert,
+                        isExpanded = isExpanded,
+                        onToggleExpand = { 
+                            expandedAlertId = if (isExpanded) null else alert.id
+                        },
+                        onSeeWhy = { onAlertClick(alert.id) },
+                        onAnalyze = {
+                            viewModel.analyzeAlert(alert.id, alert.fullMessage ?: alert.snippetRedacted, currentLocale)
+                        }
                     )
                 }
             }
@@ -130,65 +136,198 @@ fun WeeklySummaryCard(count: Int) {
 
 @Composable
 fun AlertItem(
-    title: String,
-    description: String,
-    riskLevel: RiskLevel,
-    timestamp: Long,
-    onClick: () -> Unit
+    alert: com.safex.app.data.local.AlertEntity,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onSeeWhy: () -> Unit,
+    onAnalyze: () -> Unit
 ) {
+    val riskLevel = try { RiskLevel.valueOf(alert.riskLevel) } catch(_: Exception) { RiskLevel.MEDIUM }
+    
     val (color, icon) = when (riskLevel) {
         RiskLevel.HIGH -> DangerRed to Icons.Default.Error
         RiskLevel.MEDIUM -> WarningOrange to Icons.Default.Warning
         RiskLevel.LOW -> SafetyGreen to Icons.Default.Info
     }
 
+    val headline = alert.headline ?: "Suspicious Activity"
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            .clickable(onClick = onToggleExpand),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isExpanded) 4.dp else 0.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(color.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                 Icon(
-                    imageVector = icon,
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header Row
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(color.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = headline,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = alert.snippetRedacted ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        maxLines = if (isExpanded) Int.MAX_VALUE else 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(24.dp)
+                    tint = Color.LightGray
                 )
             }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
+
+            // Expanded Content — clean structured view
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider(color = Color.LightGray.copy(alpha = 0.2f))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ── Section 1: Detected Content ──────────────────────────────
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = "Detected Content",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = alert.fullMessage ?: alert.snippetRedacted ?: "No content available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF333333)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ── Section 2: Gemini Analysis ───────────────────────────────
                 Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text = "Gemini Analysis",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                if (!alert.geminiAnalysis.isNullOrBlank()) {
+                    // Analysis is already stored as clean markdown sections — render structured
+                    GeminiAnalysisSummaryView(alert.geminiAnalysis)
+                } else {
+                    // No analysis yet — trigger fetch on first expand
+                    androidx.compose.runtime.LaunchedEffect(alert.id) { onAnalyze() }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Analyzing...", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ── "See Full Analysis" button ────────────────────────────────
+                OutlinedButton(
+                    onClick = onSeeWhy,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("See Full Analysis")
+                }
             }
-            
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.LightGray)
         }
     }
+}
+
+/**
+ * Renders stored JSON analysis as structured "Why flagged" bullets.
+ * Falls back to markdown line parsing for legacy stored entries.
+ */
+@Composable
+fun GeminiAnalysisSummaryView(analysisText: String) {
+    val whyLines: List<String> = remember(analysisText) {
+        // Try JSON first (new format)
+        try {
+            val obj = org.json.JSONObject(analysisText)
+            val arr = obj.optJSONArray("whyFlagged")
+            if (arr != null && arr.length() > 0) {
+                (0 until arr.length()).map { arr.getString(it) }
+            } else emptyList()
+        } catch (_: Exception) {
+            // Fallback: parse old markdown format
+            extractSection(analysisText, "**Why flagged:**")
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFFEEEE), RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        if (whyLines.isEmpty()) {
+            Text(
+                text = "Flagged by on-device heuristics.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF333333)
+            )
+        } else {
+            Column {
+                whyLines.forEach { line ->
+                    Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                        Text("•  ", color = DangerRed, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = line,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF333333)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Extracts bullet lines under [sectionHeader] until the next ** section. */
+private fun extractSection(text: String, sectionHeader: String): List<String> {
+    val lines = text.lines()
+    val startIdx = lines.indexOfFirst { it.trim().startsWith(sectionHeader) }
+    if (startIdx < 0) return emptyList()
+
+    val result = mutableListOf<String>()
+    for (i in (startIdx + 1)..lines.lastIndex) {
+        val line = lines[i].trim()
+        if (line.startsWith("**") && line.endsWith("**")) break // next section
+        if (line.isBlank()) continue
+        result.add(line.removePrefix("- ").removePrefix("• "))
+    }
+    return result
 }

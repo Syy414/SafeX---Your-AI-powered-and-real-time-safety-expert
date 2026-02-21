@@ -56,6 +56,10 @@ fun ScanScreen(
     val viewModel = remember { ScanViewModel(context) }
     val uiState by viewModel.state.collectAsState()
 
+    // Read device/app locale for language-aware backend responses
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val deviceLang = androidx.core.os.ConfigurationCompat.getLocales(config).get(0)?.language ?: "en"
+
     var currentPage by remember { mutableStateOf(initialPage) }
 
     // Photo Picker result
@@ -128,7 +132,7 @@ fun ScanScreen(
 
         ScanPage.LINK -> LinkScanScreen(
             uiState = uiState,
-            onCheck = { url -> scope.launch { viewModel.scanLink(url) } },
+            onCheck = { url -> scope.launch { viewModel.scanLink(url, deviceLang) } },
             onSaveToAlerts = saveToAlerts,
             onBack = goBack
         )
@@ -159,13 +163,13 @@ private fun ScanMenu(
                 .padding(20.dp)
         ) {
             Text(
-                text = "🛡️ SafeX Scan",
+                text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Choose a scan method to check for scam content",
+                text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -174,24 +178,24 @@ private fun ScanMenu(
 
             ScanOptionCard(
                 emoji = "🔗",
-                title = "Paste a link",
-                subtitle = "Check if a URL is safe",
+                title = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_opt_link_title),
+                subtitle = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_opt_link_desc),
                 onClick = onPasteLink
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             ScanOptionCard(
                 emoji = "🖼️",
-                title = "Choose image",
-                subtitle = "Pick from gallery — OCR + QR scan",
+                title = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_opt_image_title),
+                subtitle = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_opt_image_desc),
                 onClick = onPickImage
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             ScanOptionCard(
                 emoji = "📷",
-                title = "Scan with camera",
-                subtitle = "Point at QR code or text to scan",
+                title = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_opt_camera_title),
+                subtitle = androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_opt_camera_desc),
                 onClick = onCamera
             )
 
@@ -206,7 +210,7 @@ private fun ScanMenu(
                     ) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Scanning image…")
+                        Text(androidx.compose.ui.res.stringResource(com.safex.app.R.string.scan_progress))
                     }
                 }
                 is ScanUiState.Result -> {

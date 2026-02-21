@@ -21,6 +21,10 @@ interface AlertDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(alert: AlertEntity): Long
 
+    /** Update an alert. */
+    @androidx.room.Update
+    suspend fun update(alert: AlertEntity)
+
     /** Delete a single alert by id (after review). Returns rows affected. */
     @Query("DELETE FROM alerts WHERE id = :id")
     suspend fun deleteById(id: String): Int

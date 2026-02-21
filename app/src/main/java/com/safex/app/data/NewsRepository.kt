@@ -28,70 +28,11 @@ class NewsRepository(private val context: Context) {
     private val dao = SafeXDatabase.getInstance(context).newsArticleDao()
 
     /**
-     * Observable stream of cached articles, automatically translated to user's language.
+     * Observable stream of cached articles. The articles are already translated 
+     * optimally by Gemini and cached in the DB.
      */
     fun observeNews(): Flow<List<NewsArticleEntity>> {
-        val prefs = UserPrefs(context)
-        // Combine DB data with Language Preference
-        return kotlinx.coroutines.flow.combine(
-            dao.getByRegion("GLOBAL"),
-            prefs.languageTag
-        ) { articles, langTag ->
-            val targetLangCode = when (langTag) {
-                "ms" -> TranslateLanguage.MALAY
-                "zh" -> TranslateLanguage.CHINESE
-                else -> TranslateLanguage.ENGLISH
-            }
-
-            if (targetLangCode == TranslateLanguage.ENGLISH) {
-                articles
-            } else {
-                translateArticles(articles, targetLangCode)
-            }
-        }
-    }
-
-    private suspend fun translateArticles(
-        articles: List<NewsArticleEntity>,
-        targetLang: String
-    ): List<NewsArticleEntity> {
-        if (articles.isEmpty()) return articles
-
-        val options = TranslatorOptions.Builder()
-            .setSourceLanguage(TranslateLanguage.ENGLISH)
-            .setTargetLanguage(targetLang)
-            .build()
-        
-        val translator = Translation.getClient(options)
-        
-        return try {
-            // Ensure model is downloaded
-            val conditions = DownloadConditions.Builder().requireWifi().build()
-            translator.downloadModelIfNeeded(conditions).await()
-
-            articles.map { article ->
-                val newTitle = try {
-                    translator.translate(article.title).await()
-                } catch (e: Exception) {
-                    article.title
-                }
-                
-                val newSummary = if (!article.summary.isNullOrBlank()) {
-                    try {
-                        translator.translate(article.summary).await()
-                    } catch (e: Exception) {
-                        article.summary
-                    }
-                } else null
-
-                article.copy(title = newTitle, summary = newSummary)
-            }
-        } catch (e: Exception) {
-            Log.e("NewsRepo", "Translation failed", e)
-            articles
-        } finally {
-            translator.close()
-        }
+        return dao.getByRegion("GLOBAL")
     }
 
     /**
@@ -114,10 +55,8 @@ class NewsRepository(private val context: Context) {
         }
 
         try {
-            // Always fetch English news from backend, we translate locally
-            // Backend "language" param might be used for query source, but likely returns English too.
-            // Let's pass "en" to backend to ensure we get English source for consistent translation.
-            val articles = CloudFunctionsClient.INSTANCE.fetchNewsDigest(region, "en")
+            // Fetch English news from backend master copy
+            val articles = CloudFunctionsClient.INSTANCE.fetchNewsDigest(region)
 
             // Get read history to filter
             val readUrls = dao.getAllReadUrls().toSet()
