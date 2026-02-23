@@ -11,7 +11,8 @@ object GalleryTextExtractor {
     suspend fun extractText(context: Context, uri: Uri): String {
         return try {
             val image = InputImage.fromFilePath(context, uri)
-            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            // The Chinese recognizer inherently supports both Chinese and Latin (English/Malay) characters
+            val recognizer = TextRecognition.getClient(com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions.Builder().build())
             val result = recognizer.process(image).await()
             result.text ?: ""
         } catch (e: Exception) {

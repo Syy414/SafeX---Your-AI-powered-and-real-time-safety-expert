@@ -167,4 +167,12 @@
     <string name="score_rules">Rules probability: %1$d/20</string>
     <string name="score_tflite">AI Model probability: %1$d/80</string>
     <string name="score_total">Total probability of scam: %1$d%%</string>
+
+    <string name="gemini_analysis">Gemini Analysis</string>
+    <string name="detected_content">Detected Content</string>
+    <string name="no_content_available">No content available</string>
+    <string name="analyzing_wait">Analyzing...</string>
+    <string name="see_full_analysis">See Full Analysis</string>
+    <string name="flagged_heuristics">Flagged by on-device heuristics.</string>
+    <string name="suspicious_activity">Suspicious Activity</string>
 </resources>

@@ -30,25 +30,48 @@ class ScanViewModel(private val context: Context) {
     suspend fun scanLink(url: String, language: String = "en") {
         _state.value = ScanUiState.Scanning
         try {
-            // Call the checkLink Cloud Function, passing device language for localised response
+            // Call the Gemini-powered checkLink Cloud Function
             val response = com.safex.app.data.CloudFunctionsClient.INSTANCE.checkLink(url, language)
             
+            val finalRiskLevel = try { 
+                RiskLevel.valueOf(response.riskLevel) 
+            } catch (_: Exception) { 
+                RiskLevel.UNKNOWN 
+            }
+
+            // Build Gemini analysis JSON for the "See Why" alert detail screen
+            val geminiAnalysisJson = try {
+                org.json.JSONObject().apply {
+                    put("category",    response.category)
+                    put("riskLevel",   response.riskLevel)
+                    put("headline",    response.headline)
+                    put("confidence",  response.confidence)
+                    put("notes",       "")
+                    put("whyFlagged",  org.json.JSONArray(response.whyFlagged.ifEmpty { response.reasons }))
+                    put("whatToDoNow", org.json.JSONArray(response.whatToDoNow))
+                    put("whatNotToDo", org.json.JSONArray(response.whatNotToDo))
+                }.toString()
+            } catch (e: Exception) { null }
+
             val result = ScanResult(
-                riskLevel = try { RiskLevel.valueOf(response.riskLevel) } catch (_: Exception) { RiskLevel.UNKNOWN },
+                riskLevel = finalRiskLevel,
                 headline = response.headline,
-                reasons = response.reasons,
-                nextSteps = if (response.safe) 
-                    listOf(
-                        context.getString(com.safex.app.R.string.scan_safe_step1), 
-                        context.getString(com.safex.app.R.string.scan_safe_step2)
-                    ) 
-                else 
-                    listOf(
-                        context.getString(com.safex.app.R.string.scan_danger_step1), 
-                        context.getString(com.safex.app.R.string.scan_danger_step2)
-                    ),
+                reasons = response.whyFlagged.ifEmpty { response.reasons },
+                nextSteps = response.whatToDoNow.ifEmpty {
+                    if (response.safe)
+                        listOf(
+                            context.getString(com.safex.app.R.string.scan_safe_step1),
+                            context.getString(com.safex.app.R.string.scan_safe_step2)
+                        )
+                    else
+                        listOf(
+                            context.getString(com.safex.app.R.string.scan_danger_step1),
+                            context.getString(com.safex.app.R.string.scan_danger_step2)
+                        )
+                },
                 extractedUrl = url,
-                scanType = ScanType.LINK
+                scanType = ScanType.LINK,
+                geminiAnalysis = geminiAnalysisJson
             )
             _state.value = ScanUiState.Result(result)
 
@@ -82,12 +105,23 @@ class ScanViewModel(private val context: Context) {
                     }
                 }
 
-                // Use Hybrid Engine (Rules + AI)
-                val triageResult = com.safex.app.guardian.HybridTriageEngine(context).analyze(combinedText)
+                // Bypass Hybrid Engine completely for manual scans.
+                // Go straight to Gemini since user explicitly requested it.
+                val language = androidx.core.os.ConfigurationCompat.getLocales(context.resources.configuration).get(0)?.language ?: "en"
+                val request = com.safex.app.data.models.ExplainAlertRequest(
+                    alertType            = "manual_scan",
+                    language             = language,
+                    category             = "unknown",
+                    tactics              = emptyList(),
+                    snippet              = combinedText.take(500),
+                    extractedUrl         = null,
+                    doSafeBrowsingCheck  = false
+                )
+                val response = com.safex.app.data.CloudFunctionsClient.INSTANCE.explainAlert(request)
 
-                // 4) Map TriageResult -> ScanResult
+                // 4) Map Cloud Function Response -> ScanResult
                 val finalRiskLevel = try {
-                    RiskLevel.valueOf(triageResult.riskLevel)
+                    RiskLevel.valueOf(response.riskLevel.uppercase())
                 } catch (_: Exception) {
                     RiskLevel.UNKNOWN
                 }
@@ -96,26 +130,41 @@ class ScanViewModel(private val context: Context) {
                 val finalUrl = if (qrUrls.isNotEmpty()) {
                     qrUrls.first()
                 } else {
-                    // Simple regex to find URL in text if triage says it has one
-                    if (triageResult.containsUrl) {
-                        Regex("""(https?://[^\s]+|www\.[^\s]+)""", RegexOption.IGNORE_CASE)
+                    Regex("""(https?://[^\s]+|www\.[^\s]+)""", RegexOption.IGNORE_CASE)
                             .find(combinedText)?.value
-                    } else null
                 }
+
+                // Create JSON string manually to mimic Hybrid Engine cache for AlertDetail
+                val geminiAnalysisJson = try {
+                    org.json.JSONObject().apply {
+                        put("category",    response.category)
+                        put("riskLevel",   response.riskLevel)
+                        put("headline",    response.headline)
+                        put("confidence",  response.confidence)
+                        put("notes",       response.notes)
+                        put("whyFlagged",  org.json.JSONArray(response.whyFlagged))
+                        put("whatToDoNow", org.json.JSONArray(response.whatToDoNow))
+                        put("whatNotToDo", org.json.JSONArray(response.whatNotToDo))
+                    }.toString()
+                } catch(e: Exception) { null }
 
                 ScanResult(
                     riskLevel = finalRiskLevel,
-                    headline = triageResult.headline,
-                    reasons = triageResult.tactics.ifEmpty { listOf("Analysis completed") },
-                    nextSteps = when (finalRiskLevel) {
-                        RiskLevel.HIGH   -> listOf("Do not trust this content", "Block sender", "Delete immediately")
-                        RiskLevel.MEDIUM -> listOf("Verify source carefully", "Do not click links", "Ask a friend")
-                        else             -> listOf("Content appears safe", "Stay vigilant")
+                    headline = response.headline,
+                    // Use Gemini's whyFlagged instead of heuristics tactics
+                    reasons = response.whyFlagged.ifEmpty { listOf("Analysis completed") },
+                    // Use Gemini's whatToDoNow instead of hardcoded strings
+                    nextSteps = response.whatToDoNow.ifEmpty {
+                        when (finalRiskLevel) {
+                            RiskLevel.HIGH   -> listOf("Do not trust this content", "Block sender", "Delete immediately")
+                            RiskLevel.MEDIUM -> listOf("Verify source carefully", "Do not click links", "Ask a friend")
+                            else             -> listOf("Content appears safe", "Stay vigilant")
+                        }
                     },
                     extractedUrl   = finalUrl,
                     extractedText  = combinedText,
                     scanType       = ScanType.IMAGE,
-                    geminiAnalysis = triageResult.geminiAnalysis
+                    geminiAnalysis = geminiAnalysisJson
                 )
             }
             _state.value = ScanUiState.Result(result)

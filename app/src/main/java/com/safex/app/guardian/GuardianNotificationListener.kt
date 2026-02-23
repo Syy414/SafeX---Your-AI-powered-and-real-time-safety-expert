@@ -103,10 +103,11 @@ class GuardianNotificationListener : NotificationListenerService() {
 
                 Log.d(TAG, "Triaging notification from ${sbn.packageName}")
 
-                // ── Deduplication: skip if we already alerted on identical text ──
-                val contentHash = combined.hashCode().toString()
+                // ── Deduplication: skip if we already alerted on identical text within 10 minutes ──
+                val timeWindow = System.currentTimeMillis() / (10 * 60 * 1000) // 10-minute buckets
+                val contentHash = "${combined.hashCode()}_$timeWindow"
                 if (recentHashes.containsKey(contentHash)) {
-                    Log.d(TAG, "Skipping duplicate notification (same content hash).")
+                    Log.d(TAG, "Skipping duplicate notification (same content hash within 10m).")
                     return@launch
                 }
                 recentHashes[contentHash] = true

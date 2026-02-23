@@ -167,4 +167,12 @@
     <string name="score_rules">规则概率: %1$d/20</string>
     <string name="score_tflite">AI模型概率: %1$d/80</string>
     <string name="score_total">诈骗总概率: %1$d%%</string>
+
+    <string name="gemini_analysis">Gemini 分析</string>
+    <string name="detected_content">检测到的内容</string>
+    <string name="no_content_available">暂无内容可用</string>
+    <string name="analyzing_wait">正在分析...</string>
+    <string name="see_full_analysis">查看完整分析</string>
+    <string name="flagged_heuristics">由设备启发式检测标记。</string>
+    <string name="suspicious_activity">可疑活动</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.safex.app.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -33,17 +34,24 @@ fun SettingsScreen(userPrefs: UserPrefs, alertRepository: AlertRepository) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = stringResource(com.safex.app.R.string.settings_title),
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(), 
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(com.safex.app.R.string.settings_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = androidx.compose.ui.graphics.Color.Black
+            )
+        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // --- Language Section ---
         Text(stringResource(com.safex.app.R.string.language), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
@@ -147,38 +155,7 @@ fun SettingsScreen(userPrefs: UserPrefs, alertRepository: AlertRepository) {
         HorizontalDivider()
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- Demo / Testing Section ---
-        Text(stringResource(com.safex.app.R.string.testing_title), style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = {
-                  scope.launch {
-                      alertRepository.generateDemoData()
-                      android.widget.Toast.makeText(context, context.getString(com.safex.app.R.string.toast_demo_added), android.widget.Toast.LENGTH_SHORT).show()
-                  }
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(com.safex.app.R.string.btn_demo_data))
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = {
-                  scope.launch {
-                      alertRepository.deleteAllAlerts()
-                      android.widget.Toast.makeText(context, context.getString(com.safex.app.R.string.toast_data_cleared), android.widget.Toast.LENGTH_SHORT).show()
-                  }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(com.safex.app.R.string.btn_reset_data))
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(24.dp))
 
         Text(stringResource(com.safex.app.R.string.about_title), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(com.safex.app.R.string.version_info), style = MaterialTheme.typography.bodyMedium)

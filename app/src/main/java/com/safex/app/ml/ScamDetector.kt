@@ -94,17 +94,81 @@ class ScamDetector(ctx: Context) {
         return map
     }
 
-    // ── Preprocessing (must match training pipeline exactly) ──────────
+    // ── Preprocessing (MUST match training pipeline exactly) ──────────
+    // Ported from the Python normalize_new() used during Kaggle training.
+
+    companion object {
+        // Hard safety regexes (same order as training pipeline)
+        private val RE_URL = Regex("""(?i)\b(?:https?://|www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:/[^\s]*)?""")
+        private val RE_EMAIL = Regex("""(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b""")
+        private val RE_PHONE = Regex("""(?<!\w)(?:\+?\d[\d\-\s]{6,}\d)(?!\w)""")
+        private val RE_LONG_DIGITS = Regex("""\b\d{8,}\b""")
+        private val RE_MONEY = Regex("""(?i)\bRM\s*\d+(?:\.\d{1,2})?\b""")
+
+        // Contextual OTP detection
+        private val RE_OTP_CTX = Regex("""(?i)\b(otp|tac|code|verification|verify|kod|pin|验证码|驗證碼)\b""")
+        private val RE_OTP_VAL = Regex("""\b\d{4,8}\b""")
+
+        // Contextual REF detection
+        private val RE_REF_CTX = Regex("""(?i)\b(ref|reference|txn|transaction|receipt|resit|rujukan)\b""")
+
+        // Organisation name → placeholder (matches training distribution)
+        private val BANKS = listOf(
+            "maybank", "cimb", "public bank", "rhb", "hong leong",
+            "ambank", "bank islam", "bsn", "uob", "ocbc"
+        )
+        private val TELCOS = listOf("celcom", "digi", "maxis", "unifi", "tm", "yes")
+        private val COURIERS = listOf(
+            "j&t", "jt", "poslaju", "gdex", "dhl",
+            "ninja van", "flash", "shopee express", "spx"
+        )
+    }
 
     private fun normalizeForModel(s: String): String {
         // 1. Unicode NFKC
         var x = Normalizer.normalize(s, Normalizer.Form.NFKC)
         // 2. Collapse whitespace
         x = x.replace(Regex("\\s+"), " ").trim()
-        // 3. URL → <URL>
-        x = x.replace(Regex("(?i)\\b(?:https?://|www\\.)\\S+"), "<URL>")
-        // 4. 8+ consecutive digits → <NUM>
-        x = x.replace(Regex("\\b\\d{8,}\\b"), "<NUM>")
+
+        // 3. Hard safety normalizations (same order as training)
+        x = RE_URL.replace(x, "<URL>")
+        x = RE_EMAIL.replace(x, "<EMAIL>")
+        x = RE_PHONE.replace(x, "<PHONE>")
+        x = RE_LONG_DIGITS.replace(x, "<NUM>")
+        x = RE_MONEY.replace(x, "RM <AMOUNT>")
+
+        // 4. Map bank/telco/courier names to placeholders
+        var lower = x.lowercase()
+        for (b in BANKS) {
+            if (b in lower) {
+                x = x.replace(Regex("(?i)${Regex.escape(b)}"), "<BANK>")
+                lower = x.lowercase()
+            }
+        }
+        for (t in TELCOS) {
+            if (t in lower) {
+                x = x.replace(Regex("(?i)${Regex.escape(t)}"), "<TELCO>")
+                lower = x.lowercase()
+            }
+        }
+        for (c in COURIERS) {
+            if (c in lower) {
+                x = x.replace(Regex("(?i)${Regex.escape(c)}"), "<COURIER>")
+                lower = x.lowercase()
+            }
+        }
+
+        // 5. Replace 4–8 digit codes as <OTP> only when OTP context exists
+        if (RE_OTP_CTX.containsMatchIn(x)) {
+            x = RE_OTP_VAL.replace(x, "<OTP>")
+        }
+
+        // 6. Replace short ref numbers as <NUM> only if REF context exists
+        if (RE_REF_CTX.containsMatchIn(x)) {
+            x = Regex("""\b\d{4,8}\b""").replace(x, "<NUM>")
+        }
+
+        Log.d(TAG, "Normalized for model: $x")
         return x
     }
 

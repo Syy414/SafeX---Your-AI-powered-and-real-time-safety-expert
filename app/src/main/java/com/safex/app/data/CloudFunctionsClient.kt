@@ -90,7 +90,7 @@ class CloudFunctionsClient(
         FirebaseAuthHelper.ensureSignedIn()
 
         return try {
-            withTimeout(15_000) {
+            withTimeout(30_000) {
                 val result = functions
                     .getHttpsCallable("checkLink")
                     .call(mapOf("url" to url, "language" to language))

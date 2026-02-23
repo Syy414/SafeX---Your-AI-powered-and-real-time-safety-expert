@@ -167,4 +167,12 @@
     <string name="score_rules">Kebarangkalian Peraturan: %1$d/20</string>
     <string name="score_tflite">Kebarangkalian Model AI: %1$d/80</string>
     <string name="score_total">Jumlah Kebarangkalian Penipuan: %1$d%%</string>
+
+    <string name="gemini_analysis">Analisis Gemini</string>
+    <string name="detected_content">Kandungan Dikesan</string>
+    <string name="no_content_available">Tiada kandungan tersedia</string>
+    <string name="analyzing_wait">Menganalisis...</string>
+    <string name="see_full_analysis">Lihat Analisis Penuh</string>
+    <string name="flagged_heuristics">Ditandai oleh heuristik peranti.</string>
+    <string name="suspicious_activity">Aktiviti Mencurigakan</string>
 </resources>

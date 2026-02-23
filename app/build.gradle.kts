@@ -84,6 +84,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("com.google.mlkit:text-recognition:16.0.1") 
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
     // CameraX 1.4.1+ provides the 16KB aligned libimage_processing_util_jni.so
     // which overrides the old one in this library.
     implementation("com.google.mlkit:barcode-scanning:17.3.0")

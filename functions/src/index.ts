@@ -226,9 +226,12 @@ JSON schema:
 }
 
 Rules:
-- Do not ask the user to click unknown links.
-- If the message suggests urgency, impersonation, or money transfer, raise risk.
-- FALSE POSITIVE PREVENTION: If the text appears to be a legitimate university poster, committee recruitment, event advertisement, or normal marketing material, and NOT a scam, you MUST set "riskLevel" to "LOW".
+- The local app provided a heuristicScore (keywords) and tfliteScore (AI pattern).
+- You are the ultimate judge. Some messages might have a borderline combined score (30%-35%) but are well-hidden real scams.
+- Some might have a high score but are benign (like standard OTPs, university announcements, or delivery company receipts).
+- Ignore the local scores if your reading of the text clearly indicates benign intent or malicious intent. 
+- FALSE POSITIVE PREVENTION: If the text appears to be a legitimate poster, committee recruitment, event advertisement, standard OTP/TAC code, or normal marketing material, and NOT a scam, you MUST set "riskLevel" to "LOW".
+- If the message suggests suspicious urgency, impersonation, job offers, or money transfer, set riskLevel to "HIGH" or "MEDIUM".
 - Use simple language suitable for elders.
 - Output language: You MUST return the ENTIRE JSON response in English. Do not translate it.
 `;
@@ -332,11 +335,11 @@ export const reportAlert = onCall(
 
 // ---- Callable: checkLink ----
 // Called from Home -> Manual Link Scan.
+// Uses Gemini 2.5 Flash to analyze URLs for phishing, typosquatting, and scam patterns.
 export const checkLink = onCall(
   {
-    secrets: [SAFE_BROWSING_API_KEY],
     cors: true,
-    timeoutSeconds: 15,
+    timeoutSeconds: 30,
     memory: "256MiB",
   },
   async (request) => {
@@ -346,13 +349,13 @@ export const checkLink = onCall(
 
     const data = request.data as any;
     const url = String(data?.url ?? "").trim();
-    const language = String(data?.language ?? "en"); // "en", "zh", "ms"
+    const language = String(data?.language ?? "en");
 
     if (!url) {
       throw new HttpsError("invalid-argument", "URL is required.");
     }
 
-    // Language label for Gemini translation instruction
+    // Language label for Gemini
     const langLabel: Record<string, string> = {
       zh: "Simplified Chinese (中文)",
       ms: "Bahasa Melayu",
@@ -360,100 +363,115 @@ export const checkLink = onCall(
     };
     const targetLang = langLabel[language] ?? "English";
 
+    const project = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
+    if (!project) {
+      throw new HttpsError("internal", "Missing project id in environment.");
+    }
+
     try {
-      const result = await safeBrowsingLookup([url], SAFE_BROWSING_API_KEY.value());
-      const matches = result.matches ?? [];
-
-      // If Safe Browsing has a definitive hit, high confidence
-      if (matches.length > 0) {
-        return {
-          safe: false,
-          riskLevel: "HIGH",
-          headline: "Dangerous URL Detected",
-          reasons: [
-            "Google Safe Browsing identified this URL as a known threat.",
-            ...matches.map((m: any) => `Threat type: ${m.threatType}`)
-          ],
-          matches,
-        };
-      }
-
-      // Safe Browsing clean — run local heuristic check
-      // (many new phishing domains aren't in Google's DB yet)
+      // Also run local heuristic check to give Gemini extra context
       const heuristic = checkUrlHeuristics(url);
-      if (heuristic.suspicious) {
-        // Translate explanation via Gemini
-        const proj = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
-        let headline = "Suspicious URL — Possible Phishing";
-        let reason1 = heuristic.reason ?? "URL matches known phishing patterns.";
-        let reason2 = "Google Safe Browsing has not yet recorded this domain, but its pattern matches a known brand impersonation technique.";
-        if (proj && language !== "en") {
-          try {
-            const ai2 = new GoogleGenAI({ vertexai: true, project: proj, location: VERTEX_LOCATION.value() });
-            const translateResp = await ai2.models.generateContent({
-              model: GEMINI_MODEL.value(),
-              contents: [{
-                role: "user", parts: [{
-                  text:
-                    `Translate the following strictly into ${targetLang}. Return ONLY valid JSON with keys: headline, reason1, reason2.\n` +
-                    JSON.stringify({ headline, reason1, reason2 })
-                }]
-              }],
-              config: { responseMimeType: "application/json" }
-            });
-            const parsed = JSON.parse(translateResp.text ?? "{}");
-            headline = parsed.headline || headline;
-            reason1 = parsed.reason1 || reason1;
-            reason2 = parsed.reason2 || reason2;
-          } catch { /* keep English on failure */ }
-        }
+
+      const ai = new GoogleGenAI({
+        vertexai: true,
+        project,
+        location: VERTEX_LOCATION.value(),
+      });
+
+      const system = `
+You are SafeX, an expert cybersecurity and anti-phishing assistant.
+Your job is to analyze a URL and determine if it is safe, suspicious, or dangerous.
+Return ONLY valid JSON. No markdown.
+
+You must analyze the URL by examining:
+1. Domain structure — is it a legitimate domain or does it mimic a known brand (typosquatting)?
+2. TLD — does it use suspicious TLDs (.xyz, .top, .click, .club, .online, .site, .info, .biz, .vip, .pw)?
+3. Subdomain/path patterns — does it use misleading subdomains or paths to impersonate legitimate services?
+4. Brand impersonation — does the domain name closely resemble well-known brands (e.g. maybank, whatsapp, telegram, cimb, rhb, poslaju, shopee, lazada, touchngo)?
+5. Excessive hyphens, random strings, or IP addresses in domain.
+6. Whether the URL structure follows known phishing URL patterns.
+7. Your knowledge of known scam/phishing domains and patterns.
+
+JSON schema:
+{
+  "safe": boolean,
+  "riskLevel": "LOW" | "MEDIUM" | "HIGH",
+  "headline": string,
+  "reasons": string[],
+  "whyFlagged": string[],
+  "whatToDoNow": string[],
+  "whatNotToDo": string[],
+  "category": string,
+  "confidence": number
+}
+
+Rules:
+- If the URL is from a well-known, legitimate domain (e.g. google.com, maybank2u.com.my, whatsapp.com), set safe=true, riskLevel="LOW".
+- If the URL uses a suspicious TLD, fake brand name, or known phishing pattern, set safe=false, riskLevel="HIGH".
+- If uncertain but something looks off, set safe=false, riskLevel="MEDIUM".
+- Provide clear, actionable explanations in "reasons" and "whyFlagged".
+- Output language: Respond entirely in ${targetLang}.
+`;
+
+      const userPrompt = `Analyze this URL for safety and phishing risk:\n\nURL: ${url}\n\nLocal heuristic analysis: ${JSON.stringify(heuristic)}`;
+
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL.value(),
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: userPrompt }],
+          },
+        ],
+        config: {
+          systemInstruction: system,
+          responseMimeType: "application/json",
+        },
+      });
+
+      // Strip markdown fences if Gemini wraps the JSON anyway
+      let text = (response.text ?? "").trim();
+      text = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+
+      try {
+        const parsed = JSON.parse(text);
+        return {
+          safe: parsed.safe ?? false,
+          riskLevel: parsed.riskLevel ?? "MEDIUM",
+          headline: parsed.headline ?? "Analysis complete",
+          reasons: parsed.reasons ?? [],
+          whyFlagged: parsed.whyFlagged ?? [],
+          whatToDoNow: parsed.whatToDoNow ?? [],
+          whatNotToDo: parsed.whatNotToDo ?? [],
+          category: parsed.category ?? "unknown",
+          confidence: parsed.confidence ?? 0.5,
+        };
+      } catch (e) {
+        logger.error("Gemini returned non-JSON for checkLink", { text });
         return {
           safe: false,
-          riskLevel: "HIGH",
-          headline,
-          reasons: [reason1, reason2],
+          riskLevel: "MEDIUM",
+          headline: "Could not fully analyze URL",
+          reasons: ["AI analysis returned an unexpected format. Treat with caution.", `Raw: ${text.substring(0, 200)}`],
+          whyFlagged: ["Analysis format error"],
+          whatToDoNow: ["Do not click the link until verified.", "Ask someone you trust."],
+          whatNotToDo: ["Do not enter any personal information."],
+          category: "unknown",
+          confidence: 0.3,
         };
       }
-
-      // All checks passed — translate if needed
-      let safeHeadline = "No threats found";
-      let safeReason = "Google Safe Browsing found no known issues with this URL.";
-      if (language !== "en") {
-        try {
-          const proj = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
-          if (proj) {
-            const ai2 = new GoogleGenAI({ vertexai: true, project: proj, location: VERTEX_LOCATION.value() });
-            const r = await ai2.models.generateContent({
-              model: GEMINI_MODEL.value(),
-              contents: [{
-                role: "user", parts: [{
-                  text:
-                    `Translate into ${targetLang}. Return ONLY JSON with keys: headline, reason.\n` +
-                    JSON.stringify({ headline: safeHeadline, reason: safeReason })
-                }]
-              }],
-              config: { responseMimeType: "application/json" }
-            });
-            const p = JSON.parse(r.text ?? "{}");
-            safeHeadline = p.headline || safeHeadline;
-            safeReason = p.reason || safeReason;
-          }
-        } catch { /* use English */ }
-      }
-      return {
-        safe: true,
-        riskLevel: "LOW",
-        headline: safeHeadline,
-        reasons: [safeReason]
-      };
     } catch (e: any) {
       logger.error("checkLink failed", e);
-      // Fail open but at MEDIUM, not LOW — something went wrong and user should be cautious
       return {
         safe: false,
         riskLevel: "MEDIUM",
         headline: "Could not fully verify URL",
-        reasons: ["Safe Browsing check encountered an error. Treat with caution.", `Details: ${e?.message ?? String(e)}`]
+        reasons: ["Analysis encountered an error. Treat with caution.", `Details: ${e?.message ?? String(e)}`],
+        whyFlagged: [],
+        whatToDoNow: ["Do not click the link.", "Try again later."],
+        whatNotToDo: ["Do not enter any personal info on unknown sites."],
+        category: "unknown",
+        confidence: 0.3,
       };
     }
   }

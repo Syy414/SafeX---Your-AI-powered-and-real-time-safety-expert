@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Scale group to perfectly center the logo inside the 108dp adaptive icon canvas -->
+    <group
+        android:translateX="24"
+        android:translateY="24"
+        android:scaleX="1.25"
+        android:scaleY="1.25">
+
+        <!-- Outer Shield Path (Filled, Blue) -->
+        <!-- Based on standard Material shield proportions -->
+        <path
+            android:fillColor="#1565C0"
+            android:pathData="M24,2 L4,8 L4,22 C4,32.4 12.5,42.1 24,46 C35.5,42.1 44,32.4 44,22 L44,8 L24,2 Z" />
+
+        <!-- The 'X' Lines intersecting exactly to the edges of the shield -->
+        <!-- Top Left to Bottom Right -->
+        <!-- Note: The shield corners are roughly (4,8), (44,8), and center point at bottom is (24,46) -->
+        <!-- The inner bounded box of the actual rounded space is roughly x=6 to 42, y=10 to 40 -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.5"
+            android:pathData="M10,12 L38,36" />
+            
+        <!-- Bottom Left to Top Right -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.5"
+            android:pathData="M10,36 L38,12" />
+            
+    </group>
+</vector>

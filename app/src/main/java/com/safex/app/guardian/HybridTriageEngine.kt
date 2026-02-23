@@ -8,9 +8,6 @@ import com.safex.app.ml.ScamDetector
 
 private const val TAG = "SafeX-HybridTriage"
 
-/** Combined score threshold — below this, no alert is created. */
-private const val ALERT_THRESHOLD = 0.50f
-
 /** Weight given to the heuristic engine (20%). */
 private const val HEURISTIC_WEIGHT = 0.20f
 
@@ -26,14 +23,14 @@ private const val TFLITE_WEIGHT = 0.80f
  *
  *   combinedScore = heuristicScore × 0.20  +  tfliteScore × 0.80
  *
- *   combinedScore < 0.50  →  No alert. User is not disturbed.
- *   combinedScore ≥ 0.50  →  Gemini is called for confirmation + explanation.
+ *   if TFLite >= 0.35 OR Heuristics >= 0.50 → Gemini is called for confirmation + explanation.
  *                             Alert + notification created. Gemini JSON cached.
+ *   else → No alert. User is not disturbed.
  *
  * Risk label derived from combined score (for display only):
  *   ≥ 0.75 → HIGH
- *   ≥ 0.50 → MEDIUM
- *   < 0.50 → LOW  (no alert)
+ *   ≥ 0.40 → MEDIUM
+ *   < 0.40 → LOW  (no alert)
  */
 class HybridTriageEngine(private val context: Context) : TriageEngine {
 
@@ -58,15 +55,15 @@ class HybridTriageEngine(private val context: Context) : TriageEngine {
             hScore  // effectively: hScore × 0.20 + hScore × 0.80 = hScore
         }
 
-        // ── Probability OR combination ─────────────────────────────────
-        // Combined = 1.0 - (1.0 - HeuristicScore) * (1.0 - TFLiteScore)
-        // This ensures a strong heuristic hit cannot be suppressed by a weak ML score.
-        val combined = if (tflite.isAvailable) {
-            1.0f - ((1.0f - hScore) * (1.0f - tScore))
+        // ── Probability SUM combination ─────────────────────────────────
+        // ── Probability SUM combination ─────────────────────────────────
+        // Combined = HeuristicScore(X/20) + TFLiteScore(Y/80)
+        var combined = if (tflite.isAvailable) {
+            (hScore * 0.20f) + (tScore * 0.80f)
         } else {
             hScore  // fallback: 100% heuristics when model is missing
         }
-        Log.d(TAG, "Combined=%.3f (h=%.3f OR tf=%.3f)".format(combined, hScore, tScore))
+        Log.d(TAG, "Raw Combined=%.3f".format(combined))
 
         val containsUrl = heuristics.hasAnyUrl(text)
         val category = tactics.firstOrNull()?.let {
@@ -80,8 +77,10 @@ class HybridTriageEngine(private val context: Context) : TriageEngine {
         } ?: "unknown"
 
         // ── Below threshold → no alert ─────────────────────────────────
-        if (combined < ALERT_THRESHOLD) {
-            Log.d(TAG, "Score %.3f < threshold %.2f — no alert".format(combined, ALERT_THRESHOLD))
+        // Strictly use the weighted COMBINED score (20% Rules + 80% TFLite AI)
+        // If the human-readable combined score (e.g. 30/100) is >= 0.30, we escalate to Gemini.
+        if (combined < 0.30f) {
+            Log.d(TAG, "Combined score below threshold ($combined) — no alert")
             return TriageResult(
                 riskLevel       = "LOW",
                 riskProbability = combined,
@@ -96,7 +95,7 @@ class HybridTriageEngine(private val context: Context) : TriageEngine {
 
         // ── At or above threshold: derive display risk level ───────────
         val riskLevel = if (combined >= 0.75f) "HIGH" else "MEDIUM"
-        Log.d(TAG, "Score ≥ threshold → $riskLevel — calling Gemini for explanation")
+        Log.d(TAG, "Score ≥ threshold ($combined) → $riskLevel — calling Gemini for explanation")
 
         // ── Level 3: Gemini (explanation + confirmation) ───────────────
         val currentLanguage = androidx.core.os.ConfigurationCompat.getLocales(context.resources.configuration).get(0)?.language ?: "en"
@@ -118,10 +117,11 @@ class HybridTriageEngine(private val context: Context) : TriageEngine {
             // ── Defer to Gemini as the final decision maker ──────────
             // Even if heuristics said HIGH, if Gemini says LOW (e.g., uni poster), we downgrade it.
             val finalRiskLevel = response.riskLevel.uppercase()
+            val finalProbability = if (finalRiskLevel == "LOW") 0.49f else combined
 
             TriageResult(
                 riskLevel       = finalRiskLevel,
-                riskProbability = combined,
+                riskProbability = finalProbability,
                 heuristicScore  = hScore,
                 tfliteScore     = tScore,
                 tactics         = response.whyFlagged.ifEmpty { tactics },
@@ -132,8 +132,7 @@ class HybridTriageEngine(private val context: Context) : TriageEngine {
                 analysisLanguage = currentLanguage
             )
         } catch (e: Exception) {
-            // Network unavailable / timeout → still create alert (already scored ≥ 0.50)
-            // Gemini explanation will be lazy-loaded when user opens the alert detail.
+            // Network unavailable / timeout → still create alert
             Log.w(TAG, "Gemini call failed — alert created without cached explanation: ${e.message}")
             TriageResult(
                 riskLevel       = riskLevel,

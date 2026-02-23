@@ -18,6 +18,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
+import com.safex.app.data.MlKitTranslator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -150,7 +152,10 @@ fun AlertItem(
         RiskLevel.LOW -> SafetyGreen to Icons.Default.Info
     }
 
-    val headline = alert.headline ?: "Suspicious Activity"
+    val currentLocale = androidx.core.os.ConfigurationCompat.getLocales(androidx.compose.ui.platform.LocalConfiguration.current).get(0)?.language ?: "en"
+    val defaultHeadline = androidx.compose.ui.res.stringResource(com.safex.app.R.string.suspicious_activity)
+    val headline = alert.headline ?: defaultHeadline
+    val translatedHeadline = translateDynamicText(headline, currentLocale)
 
     Card(
         modifier = Modifier
@@ -181,7 +186,7 @@ fun AlertItem(
                 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = headline,
+                        text = translatedHeadline,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -210,7 +215,7 @@ fun AlertItem(
 
                 // ── Section 1: Detected Content ──────────────────────────────
                 Text(
-                    text = "Detected Content",
+                    text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.detected_content),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -223,7 +228,7 @@ fun AlertItem(
                         .padding(12.dp)
                 ) {
                     Text(
-                        text = alert.fullMessage ?: alert.snippetRedacted ?: "No content available",
+                        text = alert.fullMessage ?: alert.snippetRedacted ?: androidx.compose.ui.res.stringResource(com.safex.app.R.string.no_content_available),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF333333)
                     )
@@ -233,7 +238,7 @@ fun AlertItem(
 
                 // ── Section 2: Gemini Analysis ───────────────────────────────
                 Text(
-                    text = "Gemini Analysis",
+                    text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.gemini_analysis),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -242,14 +247,14 @@ fun AlertItem(
 
                 if (!alert.geminiAnalysis.isNullOrBlank()) {
                     // Analysis is already stored as clean markdown sections — render structured
-                    GeminiAnalysisSummaryView(alert.geminiAnalysis)
+                    GeminiAnalysisSummaryView(alert.geminiAnalysis, currentLocale)
                 } else {
                     // No analysis yet — trigger fetch on first expand
                     androidx.compose.runtime.LaunchedEffect(alert.id) { onAnalyze() }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Analyzing...", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        Text(androidx.compose.ui.res.stringResource(com.safex.app.R.string.analyzing_wait), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     }
                 }
 
@@ -260,7 +265,7 @@ fun AlertItem(
                     onClick = onSeeWhy,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("See Full Analysis")
+                    Text(androidx.compose.ui.res.stringResource(com.safex.app.R.string.see_full_analysis))
                 }
             }
         }
@@ -272,7 +277,7 @@ fun AlertItem(
  * Falls back to markdown line parsing for legacy stored entries.
  */
 @Composable
-fun GeminiAnalysisSummaryView(analysisText: String) {
+fun GeminiAnalysisSummaryView(analysisText: String, currentLocale: String) {
     val whyLines: List<String> = remember(analysisText) {
         // Try JSON first (new format)
         try {
@@ -295,17 +300,18 @@ fun GeminiAnalysisSummaryView(analysisText: String) {
     ) {
         if (whyLines.isEmpty()) {
             Text(
-                text = "Flagged by on-device heuristics.",
+                text = androidx.compose.ui.res.stringResource(com.safex.app.R.string.flagged_heuristics),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF333333)
             )
         } else {
             Column {
                 whyLines.forEach { line ->
+                    val translatedLine = translateDynamicText(line, currentLocale)
                     Row(modifier = Modifier.padding(vertical = 2.dp)) {
                         Text("•  ", color = DangerRed, fontWeight = FontWeight.Bold)
                         Text(
-                            text = line,
+                            text = translatedLine,
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFF333333)
                         )
@@ -330,4 +336,16 @@ private fun extractSection(text: String, sectionHeader: String): List<String> {
         result.add(line.removePrefix("- ").removePrefix("• "))
     }
     return result
+}
+
+@Composable
+fun translateDynamicText(text: String, currentLocale: String): String {
+    val translated = produceState(initialValue = text, text, currentLocale) {
+        if (text.isBlank() || currentLocale == "en") {
+            value = text
+        } else {
+            value = MlKitTranslator.translate(text, currentLocale)
+        }
+    }
+    return translated.value
 }

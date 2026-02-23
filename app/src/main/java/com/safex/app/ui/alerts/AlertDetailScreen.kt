@@ -169,8 +169,7 @@ fun AlertDetailContent(
         if (alert.heuristicScore != null && alert.tfliteScore != null) {
             val rulesScore = (alert.heuristicScore * 20).toInt()
             val tfliteScore = (alert.tfliteScore * 80).toInt()
-            val combined = 1.0f - (1.0f - alert.heuristicScore) * (1.0f - alert.tfliteScore)
-            val combinedPct = (combined * 100).toInt()
+            val combinedPct = rulesScore + tfliteScore
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),

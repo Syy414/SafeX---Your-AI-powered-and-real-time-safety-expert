@@ -46,7 +46,7 @@ class HeuristicTriageEngine : TriageEngine {
     companion object {
         // ── URL detection ──────────────────────────────────────────────
         private val URL_REGEX = Regex(
-            """(https?://[^\s]+|www\.[^\s]+)""",
+            """((?:https?://|www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:/[^\s]*)?)""",
             RegexOption.IGNORE_CASE
         )
         private val SHORTENED_DOMAINS = setOf(
@@ -77,87 +77,105 @@ class HeuristicTriageEngine : TriageEngine {
         private val CREDENTIAL_TOKENS = setOf(
             // EN
             "otp", "tac", "pin number", "password", "security code",
-            "ic number", "card number", "cvv", "verification",
+            "ic number", "card number", "cvv", "verification", "login details", "secret code", "passcode",
             // MS
             "kata laluan", "kod keselamatan", "nombor ic", "nombor kad",
-            "kod pengesahan", "nombor pin", "kad pengenalan",
+            "kod pengesahan", "nombor pin", "kad pengenalan", "butiran log masuk", "kod rahsia",
             // ZH
-            "密码", "验证码", "口令", "动态码", "身份证", "银行卡", "信用卡"
+            "密码", "验证码", "口令", "动态码", "身份证", "银行卡", "信用卡", "登入资料", "安全码", "通行码"
         )
         private val CREDENTIAL_ACTIONS = setOf(
             // EN
             "enter", "provide", "share", "key in", "send",
             "click", "log in", "login", "verify", "confirm",
-            "update", "reset", "authenticate",
+            "update", "reset", "authenticate", "reply", "submit",
             // MS
             "masukkan", "berikan", "kongsi", "taip", "hantar",
-            "klik", "log masuk", "kemaskini", "kemas kini", "mengesahkan", "sahkan",
+            "klik", "log masuk", "kemaskini", "kemas kini", "mengesahkan", "sahkan", "balas", "serahkan",
             // ZH
-            "输入", "提供", "填写", "登录", "登陆", "验证", "点击", "确认"
+            "输入", "提供", "填写", "登录", "登陆", "验证", "点击", "确认", "回复", "提交", "认证"
         )
 
         // ── Pattern 2: Money transfer coercion ────────────────────────
         private val TRANSFER_VERBS = setOf(
             // EN
-            "transfer", "wire", "send money", "deposit", "pay",
+            "transfer", "wire", "send money", "deposit", "pay", "checkout", "top up", "reload", "remit",
             // MS
-            "pindah", "hantar wang", "bank in", "bayar", "deposit", "kredit",
+            "pindah", "hantar wang", "bank in", "bayar", "deposit", "kredit", "tambah nilai", "topup", "jelaskan",
             // ZH
-            "转账", "汇款", "打款", "转钱", "付款", "存入", "支付"
+            "转账", "汇款", "打款", "转钱", "付款", "存入", "支付", "充值", "结清"
         )
         private val ACCOUNT_REFS = setOf(
             // EN
-            "account", "bank", "acc no", "receive", "claim",
+            "account", "bank", "acc no", "receive", "claim", "wallet", "funds", "balance",
             // MS
-            "akaun", "no. akaun", "terima", "tuntut", "menuntut", "penebusan",
+            "akaun", "no. akaun", "terima", "tuntut", "menuntut", "penebusan", "dompet", "dana", "baki",
             // ZH
-            "账号", "账户", "收款", "对方", "指定", "领奖", "领取"
+            "账号", "账户", "收款", "对方", "指定", "领奖", "领取", "钱包", "资金", "余额"
         )
 
         // ── Pattern 3: Account locked/frozen threat ────────────────────
         private val ACCOUNT_SUBJECT = setOf(
             // EN
-            "account", "card", "wallet", "banking", "profile",
+            "account", "card", "wallet", "banking", "profile", "whatsapp", "telegram", "facebook", "instagram", "wechat", "user", "device",
             // MS
-            "akaun", "kad", "profil", "perbankan",
+            "akaun", "kad", "profil", "perbankan", "whatsapp", "telegram", "facebook", "instagram", "wechat", "pengguna", "peranti",
             // ZH
-            "账号", "账户", "帐号", "钱包", "微信", "支付宝", "银行卡", "信用分"
+            "账号", "账户", "帐号", "钱包", "微信", "支付宝", "银行卡", "信用分", "whatsapp", "telegram", "facebook", "instagram", "用户", "设备"
         )
         private val ACCOUNT_STATUS = setOf(
             // EN
             "blocked", "suspended", "frozen", "locked", "deactivated",
-            "terminated", "closed", "compromised",
-            "unusual activity", "unauthorized", "restrict",
+            "terminated", "closed", "compromised", "violation", "flagged", "suspend",
+            "unusual activity", "unauthorized", "restrict", "expired", "banned", "disabled", "risk",
             // MS
-            "sekat", "disekat", "gantung", "digantung", "beku", "dibeku", 
-            "kunci", "dikunci", "tamat", "ditamatkan",
-            "tutup", "ditutup", "tanpa kebenaran", "mencurigakan", "batal", "dibatal",
+            "sekat", "disekat", "gantung", "digantung", "beku", "dibeku", "sekatan",
+            "kunci", "dikunci", "tamat", "ditamatkan", "pelanggaran", "dibenderakan",
+            "tutup", "ditutup", "tanpa kebenaran", "mencurigakan", "batal", "dibatal", "luput", "diharamkan", "dilumpuhkan", "risiko",
             // ZH
-            "违规", "冻结", "锁定", "封禁", "注销",
-            "暂停", "异常", "风险", "限制",
-            "停用"
+            "违规", "冻结", "锁定", "封禁", "注销", "异常", "涉嫌违规",
+            "暂停", "风险", "限制",
+            "停用", "过期", "封号", "禁用", "危险"
         )
 
         // ── Pattern 4: Authority + legal coercion ─────────────────────
         private val AUTHORITY_NAMES = setOf(
             // EN
-            "police", "revenue", "customs", "immigration", "court",
+            "police", "revenue", "customs", "immigration", "court", "gov", "ministry", "department", "officer", "inspector", "lhdn", "bnm",
             // MS
             "polis", "pdrm", "bank negara", "bnm", "badan kerajaan",
             "lembaga hasil", "lhdn", "mahkamah",
             "kastam", "imigresen", "sprm", "macc",
-            "suruhanjaya komunikasi", "skmm", "mcmc",
+            "suruhanjaya komunikasi", "skmm", "mcmc", "pegawai", "kementerian", "jabatan",
             // ZH
             "公安", "刑侦", "警察", "检察院", "法院",
-            "税务", "移民", "海关", "银监会", "反诈"
+            "税务", "移民", "海关", "银监会", "反诈", "政府", "部门", "官员", "警官", "督察"
         )
         private val LEGAL_ACTIONS = setOf(
             // EN
-            "arrest", "prosecut", "summons", "fine", "court", "tax evasion", "warrant", "illegal", "investigat",
+            "arrest", "prosecut", "summons", "fine", "court", "tax evasion", "warrant", "illegal", "investigat", "penalty", "lawsuit", "sue", "charge",
             // MS
-            "tangkap", "dakwa", "pendakwaan", "saman", "denda", "mahkamah", "waran", "jenayah", "siasat", "haram",
+            "tangkap", "dakwa", "pendakwaan", "saman", "denda", "mahkamah", "waran", "jenayah", "siasat", "haram", "penalti", "tuduhan",
             // ZH
-            "逮捕", "拘留", "传唤", "立案", "犯罪", "调查", "洗钱", "诈骗", "违法", "抓捕"
+            "逮捕", "拘留", "传唤", "立案", "犯罪", "调查", "洗钱", "诈骗", "违法", "抓捕", "处罚", "诉讼", "起诉", "控告"
+        )
+        // ── Pattern 5: Delivery / Parcel ──────────────────────────────
+        private val DELIVERY_TOKENS = setOf(
+            // EN
+            "parcel", "package", "delivery", "postage", "courier", "customs",
+            // MS
+            "bungkusan", "bungkusan anda", "penghantaran", "poslaju", "kastam", "kurier", "j&t",
+            // ZH
+            "包裹", "快递", "运单", "派送", "集运", "分拨中心", "海关"
+        )
+        // ── Pattern 6: Job / Task ─────────────────────────────────────
+        private val JOB_TOKENS = setOf(
+            // EN
+            "easy job", "part time", "earn", "salary", "commission", "task", "like and follow",
+            // MS
+            "kerja sambilan", "gaji", "komisen", "tugasan", "jana pendapatan",
+            // ZH
+            "兼职", "刷单", "日结", "高薪", "赚", "佣金", "点赞", "任务"
         )
 
         // ── Category map ───────────────────────────────────────────────
@@ -166,8 +184,11 @@ class HeuristicTriageEngine : TriageEngine {
             "money_transfer" to "Investment Scam",
             "account_threat" to "Impersonation",
             "legal_threat"   to "Impersonation",
+            "delivery_scam"  to "Phishing",
+            "job_scam"       to "Job Scam",
             "suspicious_url" to "Phishing",
-            "typosquat_url"  to "Phishing"
+            "typosquat_url"  to "Phishing",
+            "suspicious_keywords" to "Suspicious"
         )
     }
 
@@ -176,35 +197,63 @@ class HeuristicTriageEngine : TriageEngine {
      */
     fun scoreText(text: String): Pair<Float, List<String>> {
         val lower = text.lowercase()
-        val matched = mutableListOf<String>()
+        val matched = mutableSetOf<String>()
         var raw = 0f
 
         // 1. Credential harvesting
-        if (CREDENTIAL_TOKENS.any { lower.contains(it) } &&
-            CREDENTIAL_ACTIONS.any { lower.contains(it) }) {
+        val hasCredTokens = CREDENTIAL_TOKENS.any { lower.contains(it) }
+        val hasCredActions = CREDENTIAL_ACTIONS.any { lower.contains(it) }
+        if (hasCredTokens && hasCredActions) {
             raw += 0.70f
             matched.add("credential")
+        } else if (hasCredTokens || hasCredActions) {
+            raw += 0.35f
+            matched.add("suspicious_keywords")
         }
 
         // 2. Money transfer to account
-        if (TRANSFER_VERBS.any { lower.contains(it) } &&
-            ACCOUNT_REFS.any { lower.contains(it) }) {
+        val hasTransferVerbs = TRANSFER_VERBS.any { lower.contains(it) }
+        val hasAccountRefs = ACCOUNT_REFS.any { lower.contains(it) }
+        if (hasTransferVerbs && hasAccountRefs) {
             raw += 0.60f
             matched.add("money_transfer")
+        } else if (hasTransferVerbs || hasAccountRefs) {
+            raw += 0.35f
+            matched.add("suspicious_keywords")
         }
 
         // 3. Account locked/frozen threat
-        if (ACCOUNT_SUBJECT.any { lower.contains(it) } &&
-            ACCOUNT_STATUS.any { lower.contains(it) }) {
+        val hasAccountSubj = ACCOUNT_SUBJECT.any { lower.contains(it) }
+        val hasAccountStatus = ACCOUNT_STATUS.any { lower.contains(it) }
+        if (hasAccountSubj && hasAccountStatus) {
             raw += 0.55f
             matched.add("account_threat")
+        } else if (hasAccountSubj || hasAccountStatus) {
+            raw += 0.35f
+            matched.add("suspicious_keywords")
         }
 
         // 4. Authority + legal coercion
-        if (AUTHORITY_NAMES.any { lower.contains(it) } &&
-            LEGAL_ACTIONS.any { lower.contains(it) }) {
+        val hasAuthority = AUTHORITY_NAMES.any { lower.contains(it) }
+        val hasLegal = LEGAL_ACTIONS.any { lower.contains(it) }
+        if (hasAuthority && hasLegal) {
             raw += 0.65f
             matched.add("legal_threat")
+        } else if (hasAuthority || hasLegal) {
+            raw += 0.35f
+            matched.add("suspicious_keywords")
+        }
+
+        // 5. Delivery / Parcel Scams
+        if (DELIVERY_TOKENS.any { lower.contains(it) }) {
+            raw += 0.40f
+            matched.add("delivery_scam")
+        }
+
+        // 6. Job / Task Scams
+        if (JOB_TOKENS.any { lower.contains(it) }) {
+            raw += 0.45f
+            matched.add("job_scam")
         }
 
         // ── URL analysis ──────────────────────────────────────────────
@@ -237,7 +286,7 @@ class HeuristicTriageEngine : TriageEngine {
             }
         }
 
-        return raw.coerceIn(0f, 1f) to matched
+        return raw.coerceIn(0f, 1f) to matched.toList()
     }
 
     /** Returns true if ANY url is present (not just suspicious). */
