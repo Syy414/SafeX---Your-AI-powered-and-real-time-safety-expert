@@ -363,11 +363,11 @@ When the user opens an alert:
         └────────────┼────────────┘
                      ▼
 ┌────────────────────────────────────────────────────┐
-│                   ALERTS TAB                       │
-│  List of detected threats (auto detected ones)     │
-│  Each alert shows: headline, risk tag, timestamp   │
-│                     │                              │
-│                     ▼                              │
+│                   ALERTS TAB                        │
+│  List of detected threats (auto detected ones)      │
+│  Each alert shows: headline, risk tag, timestamp    │
+│                     │                               │
+│                     ▼                               │
 │  ┌──────────────────────────────────────────────┐  │
 │  │  ALERT DETAIL SCREEN                         │  │
 │  │  • Cached Gemini Explanation (instant load)  │  │
@@ -428,51 +428,93 @@ Integrating multiple Google SDKs (Firebase, ML Kit, TFLite, CameraX, Room, Compo
 
 ### Prerequisites
 
-- **Android Studio** (latest stable, Ladybug or newer)
-- **Node.js 20+** and **npm**
-- **Firebase CLI** (`npm install -g firebase-tools`)
-- A **Google Cloud** account with billing enabled (for Cloud Functions + Vertex AI)
-- A physical **Android device** (API 26+, Android 8.0+) recommended for testing Guardian mode
+- **Android Studio** (latest stable — Ladybug or newer)
+- A physical **Android phone** running **Android 8.0+** (API 26+)
+- A **USB cable** (data cable, not charge-only)
 
-### Quick Start
+### Step 1 — Clone & Open the Project
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/AstroJigsaw/SafeX---Your-AI-powered-and-real-time-safety-expert.git
-   cd SafeX---Your-AI-powered-and-real-time-safety-expert
-   ```
+```bash
+git clone https://github.com/fuchuin19/SafeX---Your-AI-powered-and-real-time-safety-expert.git
+```
 
-2. **Firebase Setup**
-   - Create a Firebase project in [Firebase Console](https://console.firebase.google.com)
-   - Enable: **Authentication** (Anonymous), **Cloud Firestore** (region: `asia-southeast1`), **Cloud Functions**
-   - Register the Android app with package name `com.safex.app`
-   - Download `google-services.json` → place in `app/`
+1. Open **Android Studio**
+2. **File → Open** → navigate to the cloned `SafeX---Your-AI-powered-and-real-time-safety-expert` folder → click **OK**
+3. Wait for **Gradle sync** to finish (bottom progress bar). First time takes a few minutes — it downloads all dependencies
+4. If sync fails with JDK errors: **File → Settings → Build → Gradle → Gradle JDK** → set to **JDK 17** (bundled with Android Studio)
 
-3. **Enable Google Cloud APIs**
-   - In [Google Cloud Console](https://console.cloud.google.com), enable:
-     - **Vertex AI API** (for Gemini 2.5 Flash access via Google Gen AI SDK)
-     - **Safe Browsing API** (used by `explainAlert` Cloud Function for optional URL safety lookup on manual scans)
+### Step 2 — Firebase Configuration
 
-4. **Deploy Cloud Functions**
-   ```bash
-   cd functions
-   npm install
-   cd ..
-   firebase deploy --only functions
-   ```
+The app uses Firebase. The `google-services.json` is **already included** in `app/` in the repo — **no action needed**, it should just work.
 
-5. **Build & Run the Android App**
-   - Open the project in Android Studio
-   - Sync Gradle
-   - Run on a physical device (recommended) or emulator
-   - On first launch: choose language → choose mode → grant permissions
+> If for some reason it's missing (e.g., gitignored), place the file at:
+> `SafeX---Your-AI-powered-and-real-time-safety-expert/app/google-services.json`
 
-6. **Enable Guardian Mode** (for demo)
-   - Settings → select **Guardian** mode
-   - Enable **Notification Access** (Settings will redirect to system settings → toggle SafeX ON)
-   - Enable **Gallery Monitoring**
+### Step 3 — Enable Developer Options on the Phone
 
-> **Note:** For the detailed step-by-step setup guide including API key configuration, secret management, and TFLite model training documentation, refer to [`SETUP_GUIDE.md`](SETUP_GUIDE.md).
+1. Go to **Settings → About Phone**
+2. Tap **Build Number** 7 times rapidly → *"You are now a developer!"* toast appears
+3. Go back to **Settings → System → Developer Options** (or search "Developer options")
+4. Enable the **USB Debugging** toggle
+
+> **OEM-specific paths:**
+> - **Samsung:** Settings → About Phone → Software Information → Build Number
+> - **Xiaomi:** Settings → About Phone → MIUI Version
+
+### Step 4 — Connect Phone via USB
+
+1. Plug phone into laptop with **USB data cable**
+2. On the phone, a prompt says *"Allow USB debugging?"* → tap **Allow** (check *"Always allow from this computer"*)
+3. If prompted for USB mode, select **File Transfer / MTP** (not charging only)
+4. In Android Studio, the phone should now appear in the **device dropdown** (top toolbar, next to the green ▶ play button) — e.g., `Samsung SM-G998B`
+
+> **Phone not showing up?**
+> - Try a **different USB cable** (many cables are charge-only)
+> - Install **OEM USB drivers**: Samsung needs [Samsung USB Driver](https://developer.samsung.com/android-usb-driver), others usually work with Google USB Driver (SDK Manager → SDK Tools → Google USB Driver)
+> - On Windows: check **Device Manager** for unknown devices
+
+### Step 5 — Run the App
+
+1. Select the **phone** from the device dropdown (NOT an emulator)
+2. Click the green **▶ Run** button (or `Shift+F10`)
+3. First build takes **2–5 minutes** — subsequent builds are faster
+4. The app auto-installs and launches on the phone
+5. If the phone asks *"Install from unknown source?"* → tap **Allow / Install**
+
+### Step 6 — Grant Permissions
+
+On first launch, SafeX will ask for several permissions during onboarding:
+
+| Permission | Why It's Needed |
+|---|---|
+| **Notification Listener** | Real-time SMS/notification scanning in Guardian mode |
+| **Storage / Media** | Gallery image scanning for scam screenshots |
+| **Camera** | Manual camera scan feature |
+| **Notifications** | Posting scam warning alerts |
+
+> **Grant all of them** for the full experience.
+
+### Step 7 — Using the App
+
+1. **Onboarding** — Pick language (EN / BM / ZH), choose operating mode (Guardian / Companion)
+2. **Home** — Dashboard showing protection status and scan options
+3. **Manual Scan** — Paste a link, pick an image, or use camera to scan for scams
+4. **Alerts** — View detected threats with Gemini-powered explanations
+5. **Insights** — Scam news feed and safety tips
+6. **Settings** — Toggle Guardian features, change language
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Gradle sync fails | **File → Invalidate Caches → Restart** |
+| SDK not found | **File → Project Structure → SDK Location** → point to your Android SDK (usually `C:\Users\<name>\AppData\Local\Android\Sdk`) |
+| Build fails with OneDrive lock errors | Move the project folder **outside OneDrive** |
+| App crashes on launch | Check **Logcat** (bottom panel), filter by `com.safex.app` for the stack trace |
+| Phone not detected | Run `adb devices` in terminal — if empty, reinstall USB drivers |
+| `minSdk 26` error | Phone's Android version is too old (needs **8.0+**) |
+
+> **That's it.** Clone → Open → Plug in phone → Hit Run. Should take ~10 min total for first-time setup.
 
 ---
 
