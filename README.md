@@ -543,6 +543,17 @@ SafeX is designed to be **privacy-first**:
 - ✅ On-device triage runs first — Gemini is called only when the on-device score exceeds the threshold, or when the user manually scans something
 - ✅ All scam news is pre-processed server-side — no user data is involved in news aggregation
 
+### What Data Leaves the Device?
+
+| Feature | Local Processing | Sent to Cloud | When | Stored |
+|---|---|---|---|---|
+| **Guardian notifications** | Heuristic Rules + TFLite Char-CNN (on-device) | Redacted snippet (max 500 chars) + on-device scores → `explainAlert` Cloud Function | Automatically when combined score ≥ 0.30 | Room DB (local only) — alert + cached Gemini analysis |
+| **Gallery scan** | ML Kit OCR + QR → Heuristic Rules + TFLite (on-device) | Redacted extracted text (max 500 chars) → `explainAlert` Cloud Function | Automatically via WorkManager when score ≥ 0.30 | Room DB (local only) — alert + cached Gemini analysis |
+| **Manual link scan** | None — sent directly to cloud | Full URL → `checkLink` Cloud Function (Gemini) | User-initiated only | Not persisted — result displayed on screen |
+| **Manual image / camera scan** | ML Kit OCR + QR (on-device text extraction) | Extracted text (max 500 chars) → `explainAlert` Cloud Function (Gemini) | User-initiated only | Not persisted — result displayed on screen |
+| **Alert detail view** | ML Kit Translation (on-device) | Only if no cached analysis — calls `explainAlert` | User opens an alert | Translation done on-device, no cloud call |
+| **Scam news feed** | N/A — no user data involved | No user data sent | Scheduled backend scrapes Google News RSS hourly | Firestore (public content only) → cached in Room DB |
+
 ---
 
 ## 📁 Repository Structure
