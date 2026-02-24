@@ -363,11 +363,11 @@ When the user opens an alert:
         └────────────┼────────────┘
                      ▼
 ┌────────────────────────────────────────────────────┐
-│                   ALERTS TAB                        │
-│  List of detected threats (auto + manual)           │
-│  Each alert shows: headline, risk tag, timestamp    │
-│                     │                               │
-│                     ▼                               │
+│                   ALERTS TAB                       │
+│  List of detected threats (auto detected ones)     │
+│  Each alert shows: headline, risk tag, timestamp   │
+│                     │                              │
+│                     ▼                              │
 │  ┌──────────────────────────────────────────────┐  │
 │  │  ALERT DETAIL SCREEN                         │  │
 │  │  • Cached Gemini Explanation (instant load)  │  │
