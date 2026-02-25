@@ -534,11 +534,10 @@ On first launch, SafeX will ask for several permissions during onboarding:
 
 SafeX is designed to be **privacy-first**:
 
-- ❌ Does **NOT** request SMS permission or extract OTPs for login; if an OTP appears in a notification preview, SafeX does not store or upload it.
+- ❌ Does **NOT** store any messages and personal data on the cloud
 - ❌ Does **NOT** bypass WhatsApp encryption
 - ❌ Does **NOT** read private chat history — only notification previews (what the OS exposes)
 - ❌ Does **NOT** upload full conversations or images
-- ❌ Does **NOT** store any personal data on the cloud
 - ✅ Gemini receives only **redacted text snippets** (max 500 chars) — never full messages or images
 - ✅ On-device triage runs first — Gemini is called only when the on-device score exceeds the threshold, or when the user manually scans something
 - ✅ All scam news is pre-processed server-side — no user data is involved in news aggregation
