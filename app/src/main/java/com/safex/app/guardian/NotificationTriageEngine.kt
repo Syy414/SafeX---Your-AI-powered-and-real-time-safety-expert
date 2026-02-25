@@ -44,6 +44,24 @@ data class TriageResult(
 class HeuristicTriageEngine : TriageEngine {
 
     companion object {
+        // ── Word-boundary helper for short/ambiguous tokens ─────────
+        // Tokens shorter than this are matched with \b word boundaries
+        // to avoid substring phantom hits (e.g. "pay" matching "repay")
+        private val WORD_BOUNDARY_CACHE = mutableMapOf<String, Regex>()
+        private fun matchesWithBoundary(text: String, token: String): Boolean {
+            if (token.length >= 6 || token.any { it.code > 0x7F }) {
+                // Long tokens or CJK characters: safe to use plain contains
+                return text.contains(token)
+            }
+            val re = WORD_BOUNDARY_CACHE.getOrPut(token) {
+                Regex("""\b${Regex.escape(token)}\b""", RegexOption.IGNORE_CASE)
+            }
+            return re.containsMatchIn(text)
+        }
+
+        private fun matchesAnyToken(text: String, tokens: Set<String>): Boolean =
+            tokens.any { matchesWithBoundary(text, it) }
+
         // ── URL detection ──────────────────────────────────────────────
         private val URL_REGEX = Regex(
             """((?:https?://|www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:/[^\s]*)?)""",
@@ -162,20 +180,36 @@ class HeuristicTriageEngine : TriageEngine {
         // ── Pattern 5: Delivery / Parcel ──────────────────────────────
         private val DELIVERY_TOKENS = setOf(
             // EN
-            "parcel", "package", "delivery", "postage", "courier", "customs",
+            "parcel", "package", "delivery", "postage", "courier",
             // MS
-            "bungkusan", "bungkusan anda", "penghantaran", "poslaju", "kastam", "kurier", "j&t",
+            "bungkusan", "bungkusan anda", "penghantaran", "poslaju", "kurier", "j&t",
             // ZH
-            "包裹", "快递", "运单", "派送", "集运", "分拨中心", "海关"
+            "包裹", "快递", "运单", "派送", "集运", "分拨中心"
+        )
+        private val DELIVERY_ACTIONS = setOf(
+            // EN — actions that turn a delivery notification into a scam signal
+            "pay", "click", "verify", "customs", "fee", "charge", "overdue",
+            // MS
+            "bayar", "klik", "sahkan", "kastam", "caj",
+            // ZH
+            "付款", "支付", "点击", "海关", "费用"
         )
         // ── Pattern 6: Job / Task ─────────────────────────────────────
         private val JOB_TOKENS = setOf(
             // EN
-            "easy job", "part time", "earn", "salary", "commission", "task", "like and follow",
+            "easy job", "part time", "earn", "commission", "like and follow",
             // MS
-            "kerja sambilan", "gaji", "komisen", "tugasan", "jana pendapatan",
+            "kerja sambilan", "komisen", "jana pendapatan",
             // ZH
-            "兼职", "刷单", "日结", "高薪", "赚", "佣金", "点赞", "任务"
+            "兼职", "刷单", "日结", "高薪", "佣金", "点赞"
+        )
+        private val JOB_ACTIONS = setOf(
+            // EN — actions that make a job mention suspicious
+            "register", "sign up", "whatsapp", "telegram", "click", "join", "withdraw",
+            // MS
+            "daftar", "sertai", "hubungi",
+            // ZH
+            "注册", "加入", "联系", "提现"
         )
 
         // ── Category map ───────────────────────────────────────────────
@@ -188,7 +222,6 @@ class HeuristicTriageEngine : TriageEngine {
             "job_scam"       to "Job Scam",
             "suspicious_url" to "Phishing",
             "typosquat_url"  to "Phishing",
-            "suspicious_keywords" to "Suspicious"
         )
     }
 
@@ -200,59 +233,51 @@ class HeuristicTriageEngine : TriageEngine {
         val matched = mutableSetOf<String>()
         var raw = 0f
 
-        // 1. Credential harvesting
-        val hasCredTokens = CREDENTIAL_TOKENS.any { lower.contains(it) }
-        val hasCredActions = CREDENTIAL_ACTIONS.any { lower.contains(it) }
+        // 1. Credential harvesting — BOTH token AND action required
+        val hasCredTokens = matchesAnyToken(lower, CREDENTIAL_TOKENS)
+        val hasCredActions = matchesAnyToken(lower, CREDENTIAL_ACTIONS)
         if (hasCredTokens && hasCredActions) {
             raw += 0.70f
             matched.add("credential")
-        } else if (hasCredTokens || hasCredActions) {
-            raw += 0.35f
-            matched.add("suspicious_keywords")
         }
 
-        // 2. Money transfer to account
-        val hasTransferVerbs = TRANSFER_VERBS.any { lower.contains(it) }
-        val hasAccountRefs = ACCOUNT_REFS.any { lower.contains(it) }
+        // 2. Money transfer to account — BOTH verb AND account ref required
+        val hasTransferVerbs = matchesAnyToken(lower, TRANSFER_VERBS)
+        val hasAccountRefs = matchesAnyToken(lower, ACCOUNT_REFS)
         if (hasTransferVerbs && hasAccountRefs) {
             raw += 0.60f
             matched.add("money_transfer")
-        } else if (hasTransferVerbs || hasAccountRefs) {
-            raw += 0.35f
-            matched.add("suspicious_keywords")
         }
 
-        // 3. Account locked/frozen threat
-        val hasAccountSubj = ACCOUNT_SUBJECT.any { lower.contains(it) }
-        val hasAccountStatus = ACCOUNT_STATUS.any { lower.contains(it) }
+        // 3. Account locked/frozen threat — BOTH subject AND status required
+        val hasAccountSubj = matchesAnyToken(lower, ACCOUNT_SUBJECT)
+        val hasAccountStatus = matchesAnyToken(lower, ACCOUNT_STATUS)
         if (hasAccountSubj && hasAccountStatus) {
             raw += 0.55f
             matched.add("account_threat")
-        } else if (hasAccountSubj || hasAccountStatus) {
-            raw += 0.35f
-            matched.add("suspicious_keywords")
         }
 
-        // 4. Authority + legal coercion
-        val hasAuthority = AUTHORITY_NAMES.any { lower.contains(it) }
-        val hasLegal = LEGAL_ACTIONS.any { lower.contains(it) }
+        // 4. Authority + legal coercion — BOTH authority AND legal action required
+        val hasAuthority = matchesAnyToken(lower, AUTHORITY_NAMES)
+        val hasLegal = matchesAnyToken(lower, LEGAL_ACTIONS)
         if (hasAuthority && hasLegal) {
             raw += 0.65f
             matched.add("legal_threat")
-        } else if (hasAuthority || hasLegal) {
-            raw += 0.35f
-            matched.add("suspicious_keywords")
         }
 
-        // 5. Delivery / Parcel Scams
-        if (DELIVERY_TOKENS.any { lower.contains(it) }) {
-            raw += 0.40f
+        // 5. Delivery / Parcel Scams — require BOTH parcel token AND suspicious action
+        val hasDelivery = matchesAnyToken(lower, DELIVERY_TOKENS)
+        val hasDeliveryAction = matchesAnyToken(lower, DELIVERY_ACTIONS)
+        if (hasDelivery && hasDeliveryAction) {
+            raw += 0.50f
             matched.add("delivery_scam")
         }
 
-        // 6. Job / Task Scams
-        if (JOB_TOKENS.any { lower.contains(it) }) {
-            raw += 0.45f
+        // 6. Job / Task Scams — require BOTH job token AND suspicious action
+        val hasJobToken = matchesAnyToken(lower, JOB_TOKENS)
+        val hasJobAction = matchesAnyToken(lower, JOB_ACTIONS)
+        if (hasJobToken && hasJobAction) {
+            raw += 0.55f
             matched.add("job_scam")
         }
 

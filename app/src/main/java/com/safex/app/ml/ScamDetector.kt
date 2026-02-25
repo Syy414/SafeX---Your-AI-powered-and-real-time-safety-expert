@@ -34,6 +34,9 @@ class ScamDetector(ctx: Context) {
     var isAvailable: Boolean = false
         private set
 
+    var initError: String? = null
+        private set
+
     private var cfg: ModelConfig = ModelConfig(512, 0.35f, 0, 1)
     private var vocab: Map<String, Int> = emptyMap()
     private var tflite: Interpreter? = null
@@ -79,7 +82,9 @@ class ScamDetector(ctx: Context) {
             Log.i(TAG, "ScamDetector ready. seqLen=${cfg.seqLen} threshold=${cfg.threshold} vocabSize=${vocab.size}")
 
         } catch (e: Exception) {
-            Log.e(TAG, "ScamDetector failed to load — Level 2 disabled", e)
+            val msg = e.message ?: e.toString()
+            Log.e(TAG, "ScamDetector failed to load — Level 2 disabled: $msg", e)
+            initError = msg
             isAvailable = false
         }
     }

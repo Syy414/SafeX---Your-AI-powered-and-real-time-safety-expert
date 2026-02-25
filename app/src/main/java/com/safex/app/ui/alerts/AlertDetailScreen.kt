@@ -166,10 +166,21 @@ fun AlertDetailContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (alert.heuristicScore != null && alert.tfliteScore != null) {
-            val rulesScore = (alert.heuristicScore * 20).toInt()
-            val tfliteScore = (alert.tfliteScore * 80).toInt()
-            val combinedPct = rulesScore + tfliteScore
+        if (alert.heuristicScore != null) {
+            val rulesScorePct = (alert.heuristicScore * 100).toInt()
+            val tfliteAvailable = alert.tfliteScore != null && alert.tfliteScore >= 0f
+            val tfliteScorePct = if (tfliteAvailable) (alert.tfliteScore!! * 100).toInt() else 0
+            val combinedPct = if (tfliteAvailable) {
+                ((alert.heuristicScore * 0.20f + alert.tfliteScore!! * 0.80f) * 100).toInt()
+            } else {
+                rulesScorePct  // heuristics-only mode
+            }
+
+            // DEBUG: Get the exact reason why TFLite failed
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            val mlError = androidx.compose.runtime.remember { 
+                com.safex.app.ml.ScamDetector(ctx).initError ?: "Model loading"
+            }
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
@@ -178,8 +189,12 @@ fun AlertDetailContent(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(stringResource(R.string.score_breakdown_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(stringResource(R.string.score_rules, rulesScore), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.score_tflite, tfliteScore), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.score_rules, rulesScorePct), style = MaterialTheme.typography.bodySmall)
+                    if (tfliteAvailable) {
+                        Text(stringResource(R.string.score_tflite, tfliteScorePct), style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        Text(stringResource(R.string.score_tflite_na, mlError), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(stringResource(R.string.score_total, combinedPct), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }

@@ -62,7 +62,7 @@ data class ExplainAlertResponse(
         /** Fallback when the function call fails entirely. */
         val FALLBACK = ExplainAlertResponse(
             category = "Unknown",
-            riskLevel = "MEDIUM",
+            riskLevel = "LOW",
             headline = "Suspicious message detected",
             whyFlagged = listOf("Message matched known scam manipulation patterns."),
             whatToDoNow = listOf(

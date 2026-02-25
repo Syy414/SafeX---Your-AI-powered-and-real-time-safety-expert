@@ -31,7 +31,7 @@ class CloudFunctionsClient(
 
         return try {
             // 2. Call function
-            withTimeout(10_000) {
+            withTimeout(25_000) {
                 val result = functions
                     .getHttpsCallable("explainAlert")
                     .call(request.toMap())

@@ -11,6 +11,7 @@ android {
 
     androidResources {
         generateLocaleConfig = false 
+        noCompress += "tflite"
     }
 
     compileSdk = 34
@@ -46,10 +47,6 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
-    }
-
-    androidResources {
-        noCompress += "tflite"
     }
 }
 
@@ -107,10 +104,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("androidx.compose.material:material-icons-extended:1.7.6")
 
-    // MediaPipe Tasks (Modern replacement for TFLite Task Lib - supports 16KB pages from v0.10.26+)
-    implementation("com.google.mediapipe:tasks-text:0.10.32")
-
     // TFLite interpreter (for on-device char-CNN scam detector)
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite:2.17.0")
 }
 

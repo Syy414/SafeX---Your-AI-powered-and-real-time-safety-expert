@@ -164,9 +164,10 @@
     <string name="confidence_source">Keyakinan: %1$d%% • Sumber: Gemini</string>
 
     <string name="score_breakdown_title">Pecahan Markah</string>
-    <string name="score_rules">Kebarangkalian Peraturan: %1$d/20</string>
-    <string name="score_tflite">Kebarangkalian Model AI: %1$d/80</string>
-    <string name="score_total">Jumlah Kebarangkalian Penipuan: %1$d%%</string>
+    <string name="score_rules">Peraturan pada peranti: %1$d%%</string>
+    <string name="score_tflite">Model AI: %1$d%%</string>
+    <string name="score_tflite_na">Ralat model AI: %1$s</string>
+    <string name="score_total">Markah risiko gabungan: %1$d%%</string>
 
     <string name="gemini_analysis">Analisis Gemini</string>
     <string name="detected_content">Kandungan Dikesan</string>

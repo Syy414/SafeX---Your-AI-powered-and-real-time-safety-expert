@@ -73,7 +73,7 @@ fun OnboardingScreen(
         // Logo
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
              Image(
-                 painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                 painter = painterResource(id = R.drawable.ic_safex_launcher_foreground),
                  contentDescription = null,
                  modifier = Modifier.size(80.dp)
              )

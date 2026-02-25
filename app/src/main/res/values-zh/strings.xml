@@ -164,9 +164,10 @@
     <string name="confidence_source">信心预估: %1$d%% • 来源: Gemini</string>
 
     <string name="score_breakdown_title">分数明细</string>
-    <string name="score_rules">规则概率: %1$d/20</string>
-    <string name="score_tflite">AI模型概率: %1$d/80</string>
-    <string name="score_total">诈骗总概率: %1$d%%</string>
+    <string name="score_rules">设备端规则: %1$d%%</string>
+    <string name="score_tflite">AI 模型: %1$d%%</string>
+    <string name="score_tflite_na">AI 模型错误: %1$s</string>
+    <string name="score_total">综合风险分数: %1$d%%</string>
 
     <string name="gemini_analysis">Gemini 分析</string>
     <string name="detected_content">检测到的内容</string>

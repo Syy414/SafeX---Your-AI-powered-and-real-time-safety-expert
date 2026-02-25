@@ -44,26 +44,25 @@ class HybridTriageEngine(private val context: Context) : TriageEngine {
         Log.d(TAG, "L1 heuristic score=%.3f tactics=$tactics".format(hScore))
 
         // ── Level 2: TFLite (80% weight) ──────────────────────────────
-        val tScore: Float = if (tflite.isAvailable) {
+        val modelAvailable = tflite.isAvailable
+        val tScore: Float = if (modelAvailable) {
             val s = tflite.predictScore(text).coerceIn(0f, 1f)
             Log.d(TAG, "L2 TFLite score=%.3f".format(s))
             s
         } else {
-            Log.w(TAG, "L2 TFLite unavailable — using 0.0 (heuristics-only mode)")
-            // When TFLite is unavailable, bump heuristics weight to 100%
-            // so the engine still catches obvious scams.
-            hScore  // effectively: hScore × 0.20 + hScore × 0.80 = hScore
+            Log.w(TAG, "L2 TFLite unavailable — heuristics-only mode")
+            -1f
         }
 
         // ── Probability SUM combination ─────────────────────────────────
-        // ── Probability SUM combination ─────────────────────────────────
-        // Combined = HeuristicScore(X/20) + TFLiteScore(Y/80)
-        var combined = if (tflite.isAvailable) {
+        // When TFLite is available: Combined = Heuristic×0.20 + TFLite×0.80
+        // When TFLite is unavailable: Combined = Heuristic×1.00 (full weight)
+        var combined = if (modelAvailable) {
             (hScore * 0.20f) + (tScore * 0.80f)
         } else {
             hScore  // fallback: 100% heuristics when model is missing
         }
-        Log.d(TAG, "Raw Combined=%.3f".format(combined))
+        Log.d(TAG, "Raw Combined=%.3f (modelAvailable=$modelAvailable)".format(combined))
 
         val containsUrl = heuristics.hasAnyUrl(text)
         val category = tactics.firstOrNull()?.let {
@@ -132,10 +131,10 @@ class HybridTriageEngine(private val context: Context) : TriageEngine {
                 analysisLanguage = currentLanguage
             )
         } catch (e: Exception) {
-            // Network unavailable / timeout → still create alert
-            Log.w(TAG, "Gemini call failed — alert created without cached explanation: ${e.message}")
+            // Network unavailable / timeout → Gemini couldn't confirm, so don't alert
+            Log.w(TAG, "Gemini call failed — downgrading to LOW (unconfirmed): ${e.message}")
             TriageResult(
-                riskLevel       = riskLevel,
+                riskLevel       = "LOW",
                 riskProbability = combined,
                 heuristicScore  = hScore,
                 tfliteScore     = tScore,

@@ -164,9 +164,10 @@
     <string name="confidence_source">Confidence: %1$d%% • Source: Gemini</string>
 
     <string name="score_breakdown_title">Score Breakdown</string>
-    <string name="score_rules">Rules probability: %1$d/20</string>
-    <string name="score_tflite">AI Model probability: %1$d/80</string>
-    <string name="score_total">Total probability of scam: %1$d%%</string>
+    <string name="score_rules">On-device rules: %1$d%%</string>
+    <string name="score_tflite">AI model: %1$d%%</string>
+    <string name="score_tflite_na">AI model error: %1$s</string>
+    <string name="score_total">Combined risk score: %1$d%%</string>
 
     <string name="gemini_analysis">Gemini Analysis</string>
     <string name="detected_content">Detected Content</string>

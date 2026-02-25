@@ -194,9 +194,30 @@ export const explainAlert = onCall(
 
     // System instruction: enforce safe, calm, elder-friendly language and JSON output
     const system = `
-You are SafeX, an anti-scam safety assistant.
-You must be calm, non-blaming, and actionable.
+You are SafeX, an anti-scam safety assistant. Your job is to be the FINAL JUDGE on whether a message is a scam.
+
+CRITICAL: You MUST default to "LOW" risk. Most messages people receive are LEGITIMATE.
+Only set riskLevel to "MEDIUM" or "HIGH" if the message contains CLEAR, SPECIFIC scam indicators — not just because it mentions money, banks, or links.
+
 Return ONLY valid JSON. No markdown.
+
+## BENIGN messages you MUST classify as LOW (examples):
+- Standard OTP/TAC codes from banks or apps (e.g., "Your TAC is 482913. Do not share this code.")
+- Delivery tracking notifications (e.g., "Your parcel has arrived at sorting center")
+- Transaction receipts (e.g., "Card purchase RM35.90 at MYDIN. Ref: 123456")
+- University/school announcements, committee recruitment
+- Normal marketing or promotional messages from legitimate brands
+- A friend/colleague asking you to send a file or call them back
+- App update notifications, system alerts
+- Payment confirmations from legitimate services (Grab, Shopee, GoPay)
+
+## Messages you SHOULD classify as MEDIUM or HIGH:
+- Demands for OTP/PIN/password with a suspicious link
+- Urgent threats about account suspension with links to fake websites
+- Job offers promising easy money with registration links
+- Authority impersonation (police/tax) threatening arrest
+- Links to domains that mimic real brands (typosquatting)
+- Requests to transfer money to unknown accounts
 
 Determine the specific scam category from this list:
 - Spam
@@ -215,7 +236,7 @@ Determine the specific scam category from this list:
 
 JSON schema:
 {
-  "category": "string (one of the above)",
+  "category": "string (one of the above, or 'Legitimate' if not a scam)",
   "riskLevel": "LOW" | "MEDIUM" | "HIGH",
   "headline": string,
   "whyFlagged": string[],
@@ -226,26 +247,27 @@ JSON schema:
 }
 
 Rules:
-- The local app provided a heuristicScore (keywords) and tfliteScore (AI pattern).
-- You are the ultimate judge. Some messages might have a borderline combined score (30%-35%) but are well-hidden real scams.
-- Some might have a high score but are benign (like standard OTPs, university announcements, or delivery company receipts).
-- Ignore the local scores if your reading of the text clearly indicates benign intent or malicious intent. 
-- FALSE POSITIVE PREVENTION: If the text appears to be a legitimate poster, committee recruitment, event advertisement, standard OTP/TAC code, or normal marketing material, and NOT a scam, you MUST set "riskLevel" to "LOW".
-- If the message suggests suspicious urgency, impersonation, job offers, or money transfer, set riskLevel to "HIGH" or "MEDIUM".
+- The on-device system flagged this message with a heuristicScore (keyword rules) and tfliteScore (AI pattern model). These are provided for context ONLY.
+- You are the ULTIMATE JUDGE. IGNORE the local scores if the actual message text is clearly benign.
+- If the message is a standard notification from a legitimate service, you MUST return riskLevel "LOW" regardless of what the local scores say.
 - Use simple language suitable for elders.
 - Output language: You MUST return the ENTIRE JSON response in English. Do not translate it.
 `;
 
-    const userPrompt = {
-      alertType,
-      category,
-      tactics,
-      snippet,
-      extractedUrl,
-      safeBrowsing,
-      heuristicScore,
-      tfliteScore,
-    };
+    const userPrompt = `Read the following message and determine if it is a scam or legitimate.
+
+--- MESSAGE TEXT (from a ${alertType}) ---
+${snippet}
+--- END MESSAGE TEXT ---
+
+Context from on-device analysis (for reference only — YOU decide the final verdict):
+- Local category guess: ${category}
+- Local tactics matched: ${JSON.stringify(tactics)}
+- Heuristic keyword score: ${heuristicScore ?? "N/A"}
+- TFLite AI model score: ${tfliteScore ?? "N/A"}
+${extractedUrl ? `- Extracted URL: ${extractedUrl}` : ""}
+${safeBrowsing ? `- Safe Browsing result: ${JSON.stringify(safeBrowsing)}` : ""}
+`;
 
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL.value(),
@@ -253,11 +275,12 @@ Rules:
       contents: [
         {
           role: "user",
-          parts: [{ text: `Analyze this alert payload:\n${JSON.stringify(userPrompt)}` }],
+          parts: [{ text: userPrompt }],
         },
       ],
       config: {
         systemInstruction: system,
+        responseMimeType: "application/json",
       },
     });
 
