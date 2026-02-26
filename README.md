@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp" width="120" alt="SafeX Logo"/>
+  <img src="app/src/main/safeX_app_icon.png" width="120" alt="SafeX Logo"/>
 </p>
 
 <h1 align="center">SafeX — Your AI-Powered Real-Time Safety Expert</h1>
